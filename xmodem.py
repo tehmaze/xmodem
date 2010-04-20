@@ -1,6 +1,6 @@
 """
 XMODEM file transfer protocol
-$Id: $
+$Id$
 """
 __author__ = 'Wijnand Modderman <maze@pyth0n.org>'
 __copyright__ = ['Copyright (c) 2010 Wijnand Modderman',
