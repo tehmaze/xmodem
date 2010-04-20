@@ -28,7 +28,7 @@ class XMODEM(object):
     >>> def putc(data, timeout=1):
     ...     return size or None
     ...
-    >>> x = xmodem(getc, putc)
+    >>> x = XMODEM(getc, putc)
 
     '''
 
@@ -40,7 +40,10 @@ class XMODEM(object):
         for i in xrange(0, 0xff):
             self.crctable.append(self.generate_crc(i, 0x1021, 0))
 
-    def abort(self, count=3, timeout=60):
+    def abort(self, count=2, timeout=60):
+        '''
+        Send an abort sequence using CAN bytes.
+        '''
         for x in xrange(0, count):
             self.putc(CAN, timeout)
 
@@ -48,9 +51,11 @@ class XMODEM(object):
         '''
         Send a stream via the XMODEM protocol.
 
-        >>> stream = file('/etc/issue', 'rb')
-        >>> print x.send(stream)
-        True
+            >>> stream = file('/etc/issue', 'rb')
+            >>> print x.send(stream)
+            True
+
+        Returns True upon succesful transmission or False in case of failure.
         '''
 
         # initialize protocol
@@ -131,9 +136,11 @@ class XMODEM(object):
         '''
         Receive a stream via the XMODEM protocol.
 
-        >>> stream = file('/etc/issue', 'wb')
-        >>> print x.recv(stream)
-        2342
+            >>> stream = file('/etc/issue', 'wb')
+            >>> print x.recv(stream)
+            2342
+
+        Returns the number of bytes received on success or None on failure.
         '''
 
         # initiate protocol
@@ -226,15 +233,36 @@ class XMODEM(object):
             # something went wrong, request retransmission
             self.putc(NAK)
 
-    def calc_checksum(self, data):
-        return sum(map(ord, data)) % 256
+    def calc_checksum(self, data, checksum=0):
+        '''
+        Calculate the checksum for a given block of data, can also be used to
+        update a checksum.
+    
+            >>> csum = xmodem.calc_checksum('hello')
+            >>> csum = xmodem.calc_checksum('world', csum)
+            >>> hex(csum)
+            '0x3c'
+        
+        '''
+        return (sum(map(ord, data)) + checksum) % 256
 
     def calc_crc(self, data, crc=0):
+        '''
+        Calculate the Cyclic Redundancy Check for a given block of data, can
+        also be used to update a CRC.
+
+            >>> crc = xmodem.calc_crc('hello')
+            >>> crc = xmodem.calc_crc('world', crc)
+            >>> hex(54755)
+            '0xd5e3'
+
+        ''' 
         for char in data:
             crc = (crc >> 8) ^ self.crctable[(crc ^ ord(char)) & 0xff]
         return crc
 
     def generate_crc(self, data, genpoly, accum):
+        '''Generate a Cyclic Redundancy Check.'''
         if type(data) != int:
             data = chr(data)
         crc = data << 8
