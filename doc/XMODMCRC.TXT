@@ -1,0 +1,139 @@
+Perception presents:
+---------- Understanding The X-Modem CRC File Transfer Protocol --------------
+
+			      by Em Decay
+
+This has to be one of the most internationally accepted protocols for upload-
+ ing and downloading binary and text files.  It is fairly straight-forward as
+ to how it is set up and there are some error checking capablities.
+
+
+--- Before you begin ---
+
+Look at my XMODEM.TXT text file for a general understanding of the X-Modem
+ file transfer protocol and the terms used in it.
+
+New things you need to know beforehand...
+
+One word is the same as two bytes.  If you want the high byte and the low
+ byte of a word, simply do the following.
+   High byte = word DIV 256   (DIV is the same as divide except the answer is  
+				  truncated)
+   Low byte = $00ff AND word  (AND refers to AND logic)
+
+To get a word from a high byte and a low byte, simply multiply the high byte
+ by 256 (or shift it left 8 bits, if you know assembly) and add the low byte
+ to it.
+
+CRC stands for Cyclical Redundancy Check.  In X-Modem CRC, it is also refer-
+ red to as CRC-16 since there are 16 bits (1 word) at the end of the block
+ that contain the CRC.  This 1 word CRC replaces the 1 byte checksum in
+ X-Modem.
+CRC-16 guarantees detection of all single and double bit errors, all errors
+ with an odd number of bits and over 99.9969% of all burst errors (you don't
+ have to know what all these things are :). 
+The easiest and fastest way to calculate the CRC is to use a lookup table.
+
+Here is some source code about making a lookup table.  Call this procedure
+ at the very beginning of the program.  Make crctable an global variable.
+ It is an array [0..255] of word.
+
+ procedure initcrc;
+
+   var
+     i:integer;
+
+   function calctable(data,genpoly,accum:word):word;
+
+     var
+       j:word;
+
+     begin
+       data:=data shl 8;
+       for j:=8 downto 1 do
+	 begin
+	   if ((data xor accum) and $8000)<>0 then
+	     accum:=(accum shl 1) xor genpoly
+	   else
+	     accum:=accum shl 1;
+	   data:=data shl1;
+	 end;
+       calctable:=accum;
+     end;
+
+   begin
+     for i:=0 to 255 do
+       crctable[i]:=calctable(i,4129,0);
+   end;
+
+The CRC starts with a value of zero at the beginning of each block.  Now to 
+ update the CRC, with each byte in the 128 byte packet simply do this (the
+ oldcrc is the crc value to be updated, data is the current byte):
+     CRC:=(oldcrc shl 8) xor (crctable[(oldcrc shr 8) xor data]);
+The final value of the CRC (after all 128 bytes) is what is being sent in the 
+ X-Modem CRC protocol.
+
+If you have somewhat understood what has just been described then you catch
+ on a lot faster than I did :)  If you just use
+
+
+--- The Actual Transfer ---
+
+As in X-Modem, the uploader waits for the downloader to send the NCGbyte.  
+ The NCGbyte for X-Modem CRC is chr(67) or the capital letter C (unlike 
+ X-Modem where the NCGbyte is chr(21), the NAK).  If the downloader takes too 
+ long or an error occurs then the uploader will stop waiting or "Time Out".
+ If this happens, then the file transfer must restart.
+
+With each packet sent...
+
+    The uploader sends:
+
+    1. an SOH byte                             {1 byte}
+    2. the packet number                       {1 byte}
+    3. the 1's complement of the packet number {1 byte}
+    4. the packet                            {128 bytes}
+    5. the high byte of the CRC-16             {1 byte}
+    6. the low byte of the CRC-16              {1 byte}
+
+    These six things make up the block.
+
+    The downloader:
+
+    1. ensures that the packet number sent matches the actual packet number
+	 that it is (If the third block sent has a '4' as the second byte,
+	 something is wrong --> CANCEL TRANSFER (send CAN byte))
+    2. adds the packet number and the 1's complement of the packet number
+	 together to make sure that they add up to 255.  if they don't -->
+	 CANCEL TRANSFER
+    3. sets the CRC to zero
+    4. updates the CRC as each byte in the packet is sent
+    5. compares the calculated CRC to the CRC that is sent
+    6. if everything looks ok (calculated CRC=sent CRC), then the downloader
+	 appends the bytes in the packet to the file being created (sent).
+	 The downloader then sends an ACK byte which tells the uploader to
+	 send the next block.
+       if the CRCs do not match, then the downloader sends a NAK byte which
+	 tells the uploader to send the same block it just sent over again.
+
+When the uploader sends an EOT byte instead of an SOH byte, the downloader
+ sends a NAK byte.  If the uploader sends another EOT immediately after that,
+ the downloader sends an ACK byte and the transfer is complete.
+
+Another thing, the downloader can cancel the transfer at any time by sending
+ a CAN byte.  The uploadered can cancel only between blocks by sending a CAN
+ byte.  It is recommended that you send between 2 and 8 consecutive CAN bytes
+ as some communication programs will not allow you to cancel with only 1 CAN
+ byte.
+
+
+--- Wrap Up ---
+
+Hopefully, you were able to follow along. :)  If not, you can e-mail me at
+ em_decay@norlink.net  and I will try to clarify it for you.  Have fun :)
+
+Perception:    Em Decay -- Mark Korhonen
+	       Cmf ------- Chris Fillion
+
+Written on Jan.3/95
+

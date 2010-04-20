@@ -1,0 +1,102 @@
+Perception presents:
+------------ Understanding The X-Modem File Transfer Protocol ---------------
+
+			      by Em Decay
+
+This has to be one of the most internationally accepted protocols for upload-
+ ing and downloading binary and text files.  It is fairly straight-forward as
+ to how it is set up and there are some error checking capablities.
+
+
+--- Before you begin ---
+
+Things you need to know beforehand...
+
+The following terms are simply ascii codes:
+    SOH = chr(1)  = CTRL-A =
+    EOT = chr(4)  = CTRL-D = End of Transmission
+    ACK = chr(6)  = CTRL-F = Positive Acknowledgement
+    NAK = chr(21) = CTRL-U = Negative Acknowledgement
+    CAN = chr(24) = CTRL-X = Cancel
+
+In order to send the file, you must first divide it into 128 byte sections
+ (packets).  Bytes 0-127 of the file make up the first packet, bytes 128-255
+ make up the second packet, etc.
+
+The packet number sent is simply the number of the packet.  If the packet
+ number is greater than 255, then subtract 256 repeatly until the number is
+ between 0 and 255.  For example, if you were sending packet 731, then you
+ would send 731 - 256 - 256 = 219.
+
+The 1's complement of a byte (to make life easy) is simply 255 minus the
+ byte.  For example, if you had to take the 1's complement of 142, the answer
+ would be 255 - 142 = 133.
+
+The checksum is the value of all the bytes in the packet added together.  For
+ example, if the first five bytes were 45, 12, 64, 236, 173 and the other 123
+ bytes were zeroes, the checksum would be 45+12+64+236+173+0+0+...+0 = 530.
+ However, to make each block one byte smaller, they repeatly subtract 256
+ from the checksum until it is between 0 and 255.  In this case, the checksum
+ would be 530 - 256 - 256 = 18.
+
+The first byte the downloader sends is referred to as the NCGbyte.
+
+Provided that you aren't lost already, here is what happens next.  The steps
+ below describe who sends what when :)
+
+
+--- The Actual Transfer ---
+
+The uploader waits until the downloader sends a NAK byte.  The NAK byte
+ is the signal that the downloader is ready to start.  This byte is referred
+ to as the NCGbyte.  If the downloader takes too long or an error occurs then 
+ the uploader will stop waiting or "Time Out".  If this happens, then the 
+ file transfer must restart.
+
+With each packet sent...
+
+    The uploader sends:
+
+    1. an SOH byte                             {1 byte}
+    2. the packet number                       {1 byte}
+    3. the 1's complement of the packet number {1 byte}
+    4. the packet                            {128 bytes}
+    5. the checksum                            {1 byte}
+    The above five things are called the block.
+
+    The downloader:
+
+    1. ensures that the packet number sent matches the actual packet number
+	 that it is (If the third block send has a '4' as the second byte,
+	 something is wrong --> CANCEL TRANSFER (send CAN byte))
+    2. adds the packet number and the 1's complement of it together to make
+	 sure that they add up to 255.  if they don't --> CANCEL TRANSFER
+    3. adds up all the bytes in the packet together --> THE SUM
+    4. compares the last two significant digits of THE SUM with the checksum
+    5. if everything looks ok (sum=checksum), then the downloader appends the
+	 bytes in the packet to the file being created (sent).  The down-
+	 loader then sends an ACK byte which tells the uploader to send the
+	 next block.
+       if the sums do not match then the downloader sends an NAK byte which
+	 tells the uploader to send the same block it just sent over again.
+
+When the uploader sends an EOT byte instead of an SOH byte, the downloader
+ sends a NAK byte.  If the uploader sends another EOT immediately after that,
+ the downloader sends an ACK byte and the transfer is complete.
+
+Another thing, the downloader can cancel the transfer at any time by sending
+ a CAN byte.  The uploader can only cancel between blocks by sending a CAN
+ byte.  It is recommended that you send anywhere between 2 and 8 consecutive
+ CAN bytes when you wish to cancel as some programs will not let you abort if
+ only 1 CAN byte is sent.
+
+
+--- Wrap Up ---
+
+Hopefully, you were able to follow along. :)  If not, you can e-mail me at
+ em_decay@norlink.net  and I will try to clarify it for you.  Have fun :)
+
+Perception:    Em Decay -- Mark Korhonen
+	       Cmf ------- Chris Fillion
+
+Written on Dec.28/95

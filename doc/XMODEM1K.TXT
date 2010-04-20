@@ -1,0 +1,109 @@
+Perception presents:
+---------- Understanding The X-Modem 1K File Transfer Protocol --------------
+
+			      by Em Decay
+
+This has to be one of the most internationally accepted protocols for upload-
+ ing and downloading binary and text files.  It is fairly straight-forward as
+ to how it is set up and there are fairly good error checking capablities.
+
+
+--- Before you begin ---
+
+Look at my XMODEM.TXT and XMODEMCRC.TXT text file for a general understanding 
+ of the X-Modem file transfer protocol and the terms used in it.
+
+New things you need to know beforehand...
+
+The following term is just an ASCII code:
+ STX = chr(2) = CTRL-B
+
+The CRC starts with a value of zero at the beginning of each block.  Now to 
+ update the CRC, with each byte in the 1024 byte packet simply do this (the
+ oldcrc is the crc value to be updated, data is the current byte):
+     CRC:=(oldcrc shl 8) xor (crctable[(oldcrc shr 8) xor data]);
+The final value of the CRC (after all 1024 bytes) is what is being sent in 
+ the X-Modem CRC protocol.
+
+If a 128 byte packet is sent, the CRC is calculated in the same manner as in
+ X-Modem CRC.
+
+These are the only new things that are needed in X-Modem 1K. :)
+
+
+--- The Actual Transfer ---
+
+As in X-Modem, the uploader waits for the downloader to send the NCGbyte.  
+ The NCGbyte for X-Modem 1K is identical to the NCGbyte for X-Modem CRC and 
+ it is chr(67) or the capital letter C (unlike X-Modem where the NCGbyte is 
+ chr(21), the NAK).  If the downloader takes too long or an error occurs then 
+ the uploader will stop waiting or "Time Out".  If this happens, then the 
+ file transfer must restart.
+
+The uploader can send either 1024 byte or 128 byte packets.  1024 byte
+ packets are faster but 128 bytes at the end of the transfer can save some
+ time at the end.  This is because if there are only 125 bytes left to send,
+ only one 128 byte packet would be necessary (in which case you would send
+ 3 null (chr(0)) bytes) whereas sending a 1024 byte packet would send 999
+ nulls.
+
+With each packet sent...
+
+    In each 1024 byte (1k) packet, the uploader sends:
+
+    1. an STX byte                             {1 byte}
+    2. the packet number                       {1 byte}
+    3. the 1's complement of the packet number {1 byte}
+    4. the packet                           {1024 bytes}
+    5. the high byte of the CRC-16             {1 byte}
+    6. the low byte of the CRC-16              {1 byte}
+    
+   In each 128 byte packet, the uploader sends:
+    
+    1. an STX byte                             {1 byte}
+    2. the packet number                       {1 byte}
+    3. the 1's complement of the packet number {1 byte}
+    4. the packet                           {1024 bytes}
+    5. the high byte of the CRC-16             {1 byte}
+    6. the low byte of the CRC-16              {1 byte}
+
+    These six things make up the block.
+
+    The downloader:
+
+    1. ensures that the packet number sent matches the actual packet number
+	 that it is (If the third block sent has a '4' as the second byte,
+	 something is wrong --> CANCEL TRANSFER (send CAN byte))
+    2. adds the packet number and the 1's complement of the packet number
+	 together to make sure that they add up to 255.  if they don't -->
+	 CANCEL TRANSFER
+    3. sets the CRC to zero
+    4. updates the CRC as each byte in the packet is sent
+    5. compares the calculated CRC to the CRC that is sent
+    6. if everything looks ok (calculated CRC=sent CRC), then the downloader
+	 appends the bytes in the packet to the file being created (sent).
+	 The downloader then sends an ACK byte which tells the uploader to
+	 send the next block.
+       if the CRCs do not match, then the downloader sends a NAK byte which
+	 tells the uploader to send the same block it just sent over again.
+
+When the uploader sends an EOT byte instead of an SOH or STX byte, the down-
+ loader sends a NAK byte.  If the uploader sends another EOT immediately 
+ after that, the downloader sends an ACK byte and the transfer is complete.
+
+Another thing, the downloader can cancel the transfer at any time by sending
+ a CAN byte.  The uploadered can cancel only between blocks by sending a CAN
+ byte.  It is recommended that you send between 2 and 8 consecutive CAN bytes
+ as some communication programs will not allow you to cancel with only 1 CAN
+ byte.
+
+
+--- Wrap Up ---
+
+Hopefully, you were able to follow along. :)  If not, you can e-mail me at
+ em_decay@norlink.net  and I will try to clarify it for you.  Have fun :)
+
+Perception:    Em Decay -- Mark Korhonen
+	       Cmf ------- Chris Fillion
+
+Written on Jan.19/95
