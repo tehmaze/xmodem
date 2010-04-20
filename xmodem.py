@@ -1,7 +1,14 @@
+"""
+XMODEM file transfer protocol
+$Id: $
+"""
+__author__ = 'Wijnand Modderman <maze@pyth0n.org>'
+__copyright__ = ['Copyright (c) 2010 Wijnand Modderman',
+                 'Copyright (c) 1981 Chuck Forsberg']
+__license__ = 'MIT'
+__url__ = 'http://maze.io/'
+
 # Protocol bytes
-
-import struct
-
 SOH = chr(0x01)
 STX = chr(0x02)
 EOT = chr(0x04)
