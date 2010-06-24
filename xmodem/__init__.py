@@ -270,14 +270,18 @@ class XMODEM(object):
                         # excessive amounts of retransmissions requested, 
                         # abort transfer
                         self.abort(timeout=timeout)
+                        if not quiet:
+                            print >> sys.stderr, 'excessive NAKs'
                         return False
     
                 # protocol error
                 self.abort(timeout=timeout)
+                if not quiet:
+                    print >> sys.stderr, 'protocol error'
                 return False
 
             # keep track of sequence
-            sequence = (sequence + 1 ) % 0xff
+            sequence = (sequence + 1) % 0x100
 
         # end of transmission
         self.putc(EOT)
