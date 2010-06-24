@@ -112,7 +112,7 @@ __copyright__ = ['Copyright (c) 2010 Wijnand Modderman',
                  'Copyright (c) 1981 Chuck Forsberg']
 __license__   = 'MIT'
 __url__       = 'http://maze.io/'
-__version__   = '0.1'
+__version__   = '0.2.2'
 
 import time
 import sys
@@ -138,7 +138,7 @@ class XMODEM(object):
     >>> def putc(data, timeout=1):
     ...     return size or None
     ...
-    >>> x = XMODEM(getc, putc)
+    >>> modem = XMODEM(getc, putc)
 
     '''
 
@@ -194,7 +194,7 @@ class XMODEM(object):
         Send a stream via the XMODEM protocol.
 
             >>> stream = file('/etc/issue', 'rb')
-            >>> print x.send(stream)
+            >>> print modem.send(stream)
             True
 
         Returns ``True`` upon succesful transmission or ``False`` in case of
@@ -292,7 +292,7 @@ class XMODEM(object):
         Receive a stream via the XMODEM protocol.
 
             >>> stream = file('/etc/issue', 'wb')
-            >>> print x.recv(stream)
+            >>> print modem.recv(stream)
             2342
 
         Returns the number of bytes received on success or ``None`` in case of
@@ -414,8 +414,8 @@ class XMODEM(object):
         Calculate the checksum for a given block of data, can also be used to
         update a checksum.
     
-            >>> csum = xmodem.calc_checksum('hello')
-            >>> csum = xmodem.calc_checksum('world', csum)
+            >>> csum = modem.calc_checksum('hello')
+            >>> csum = modem.calc_checksum('world', csum)
             >>> hex(csum)
             '0x3c'
         
@@ -427,9 +427,9 @@ class XMODEM(object):
         Calculate the Cyclic Redundancy Check for a given block of data, can
         also be used to update a CRC.
 
-            >>> crc = xmodem.calc_crc('hello')
-            >>> crc = xmodem.calc_crc('world', crc)
-            >>> hex(54755)
+            >>> crc = modem.calc_crc('hello')
+            >>> crc = modem.calc_crc('world', crc)
+            >>> hex(crc)
             '0xd5e3'
 
         ''' 
