@@ -26,17 +26,17 @@ example)::
     >>> def putc(data, timeout=1):
     ...     return size or None
     ...
-    >>> x = XMODEM(getc, putc)
+    >>> modem = XMODEM(getc, putc)
 
 Now, to upload a file, use the ``send`` method::
 
     >>> stream = open('/etc/fstab', 'rb')
-    >>> x.send(stream)
+    >>> modem.send(stream)
 
 To download a file, use the ``recv`` method::
 
     >>> stream = open('output', 'wb')
-    >>> x.recv(stream)
+    >>> modem.recv(stream)
 
 For more information, take a look at the documentation_.
 
