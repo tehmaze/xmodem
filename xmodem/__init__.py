@@ -112,7 +112,7 @@ __copyright__ = ['Copyright (c) 2010 Wijnand Modderman',
                  'Copyright (c) 1981 Chuck Forsberg']
 __license__   = 'MIT'
 __url__       = 'http://maze.io/'
-__version__   = '0.2.2'
+__version__   = '0.2.3'
 
 import time
 import sys
@@ -396,7 +396,7 @@ class XMODEM(object):
                     income_size += len(data)
                     stream.write(data)
                     self.putc(ACK)
-                    sequence = (sequence + 1) % 0xff
+                    sequence = (sequence + 1) % 0x100
                     char = self.getc(1, timeout) 
                     continue
             else:
