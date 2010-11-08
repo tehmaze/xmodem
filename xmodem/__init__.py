@@ -114,9 +114,12 @@ __license__   = 'MIT'
 __url__       = 'http://maze.io/'
 __version__   = '0.2.3'
 
+import logging
 import time
 import sys
 
+# Loggerr
+log = logging.getLogger('xmodem')
 
 # Protocol bytes
 SOH = chr(0x01)
@@ -222,9 +225,7 @@ class XMODEM(object):
                     else:
                         cancel = 1
                 else:
-                    if not quiet:
-                        print >> sys.stderr, \
-                            'send ERROR expected NAK/CRC, got', ord(char)
+                    log.error('send ERROR expected NAK/CRC, got %s' % (ord(char),))
             
             error_count += 1
             if error_count >= retry:
@@ -238,17 +239,16 @@ class XMODEM(object):
         while True:
             data = stream.read(packet_size)
             if not data:
-                if not quiet:
-                    print >> sys.stderr, 'send EOS'
+                log.info('sending EOS')
                 # end of stream
                 break 
-    
+
             data = data.ljust(packet_size, '\xff')
             if crc_mode:
                 crc = self.calc_crc(data)
             else:
                 crc = self.calc_checksum(data)
-            
+
             # emit packet
             while True:
                 self.putc(SOH)
@@ -270,14 +270,12 @@ class XMODEM(object):
                         # excessive amounts of retransmissions requested, 
                         # abort transfer
                         self.abort(timeout=timeout)
-                        if not quiet:
-                            print >> sys.stderr, 'excessive NAKs'
+                        log.warning('excessive NAKs, transfer aborted')
                         return False
-    
+
                 # protocol error
                 self.abort(timeout=timeout)
-                if not quiet:
-                    print >> sys.stderr, 'protocol error'
+                log.error('protocol error')
                 return False
 
             # keep track of sequence
@@ -379,16 +377,14 @@ class XMODEM(object):
                 if crc_mode:
                     csum = (ord(data[-2]) << 8) + ord(data[-1])
                     data = data[:-2]
-                    if not quiet:
-                        print >> sys.stderr, 'CRC(%04x <> %04x)' % (csum, 
-                            self.calc_crc(data)),
+                    log.debug('CRC (%04x <> %04x)' % \
+                        (csum, self.calc_crc(data)))
                     valid = csum == self.calc_crc(data)
                 else:
                     csum = data[-1]
                     data = data[:-1]
-                    if not quiet:
-                        print >> sys.stderr, 'checksum(%02x <> %02x)' % \
-                            (ord(csum), self.calc_checksum(data)),
+                    log.debug('checksum (checksum(%02x <> %02x)' % \
+                        (ord(csum), self.calc_checksum(data)))
                     valid = ord(csum) == self.calc_checksum(data)
 
                 # valid data, append chunk
@@ -402,10 +398,9 @@ class XMODEM(object):
             else:
                 # consume data
                 self.getc(packet_size + 1 + crc_mode)
-                if not quiet:
-                    print >> sys.stderr, 'expected sequence %d, got %d/%d' % \
-                        (sequence, seq1, seq2)
-            
+                self.debug('expecting sequence %d, got %d/%d' % \
+                    (sequence, seq1, seq2))
+
             # something went wrong, request retransmission
             self.putc(NAK)
 
@@ -413,12 +408,12 @@ class XMODEM(object):
         '''
         Calculate the checksum for a given block of data, can also be used to
         update a checksum.
-    
+
             >>> csum = modem.calc_checksum('hello')
             >>> csum = modem.calc_checksum('world', csum)
             >>> hex(csum)
             '0x3c'
-        
+
         '''
         return (sum(map(ord, data)) + checksum) % 256
 
