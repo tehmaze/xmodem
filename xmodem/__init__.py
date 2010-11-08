@@ -29,7 +29,7 @@ XMODEM 128 byte blocks
 ::
 
     SENDER                                      RECEIVER
-    
+
                                             <-- NAK
     SOH 01 FE Data[128] CSUM                -->
                                             <-- ACK
@@ -50,7 +50,7 @@ XMODEM-1k blocks, CRC mode
 ::
 
     SENDER                                      RECEIVER
-    
+
                                             <-- C
     STX 01 FE Data[1024] CRC CRC            -->
                                             <-- ACK
@@ -67,7 +67,7 @@ Mixed 1024 and 128 byte Blocks
 ::
 
     SENDER                                      RECEIVER
-    
+
                                             <-- C
     STX 01 FE Data[1024] CRC CRC            -->
                                             <-- ACK
@@ -226,7 +226,7 @@ class XMODEM(object):
                         cancel = 1
                 else:
                     log.error('send ERROR expected NAK/CRC, got %s' % (ord(char),))
-            
+
             error_count += 1
             if error_count >= retry:
                 self.abort(timeout=timeout)
@@ -427,7 +427,7 @@ class XMODEM(object):
             >>> hex(crc)
             '0xd5e3'
 
-        ''' 
+        '''
         for char in data:
             crc = (crc << 8) ^ self.crctable[((crc >> 8) ^ ord(char)) & 0xff]
         return crc & 0xffff
