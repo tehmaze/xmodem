@@ -111,7 +111,7 @@ __author__ = 'Wijnand Modderman <maze@pyth0n.org>'
 __copyright__ = ['Copyright (c) 2010 Wijnand Modderman',
                  'Copyright (c) 1981 Chuck Forsberg']
 __license__ = 'MIT'
-__version__ = '0.2.3'
+__version__ = '0.2.4'
 
 import logging
 import time
@@ -273,6 +273,9 @@ class XMODEM(object):
                         self.abort(timeout=timeout)
                         log.warning('excessive NAKs, transfer aborted')
                         return False
+
+                    # return to loop and resend
+                    continue
 
                 # protocol error
                 self.abort(timeout=timeout)

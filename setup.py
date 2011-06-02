@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name         = 'xmodem',
-    version      = '0.2.3',
+    version      = '0.2.4',
     author       = 'Wijnand Modderman',
     author_email = 'maze@pyth0n.org',
     description  = ('XMODEM protocol implementation.'),
