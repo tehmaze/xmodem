@@ -111,7 +111,7 @@ __author__ = 'Wijnand Modderman <maze@pyth0n.org>'
 __copyright__ = ['Copyright (c) 2010 Wijnand Modderman',
                  'Copyright (c) 1981 Chuck Forsberg']
 __license__ = 'MIT'
-__version__ = '0.2.4'
+__version__ = '0.2.5'
 
 import logging
 import time
@@ -127,7 +127,10 @@ EOT = chr(0x04)
 ACK = chr(0x06)
 NAK = chr(0x15)
 CAN = chr(0x18)
-CRC = chr(0x43)
+CRC = chr(0x43) # C
+
+MODE_XMODEM = 0
+MODE_XMODEM1K = 1
 
 
 class XMODEM(object):
@@ -192,7 +195,8 @@ class XMODEM(object):
         for counter in xrange(0, count):
             self.putc(CAN, timeout)
 
-    def send(self, stream, retry=16, timeout=60, quiet=0):
+    def send(self, stream, mode=MODE_XMODEM, retry=16, timeout=60, quiet=0,
+             statusCallback=None):
         '''
         Send a stream via the XMODEM protocol.
 
@@ -202,9 +206,37 @@ class XMODEM(object):
 
         Returns ``True`` upon succesful transmission or ``False`` in case of
         failure.
+
+        :param stream: The stream object to send data from.
+        :type stream: stream (file, etc.)
+        :param mode: The XMODEM protocol mode (xmodem.MODE_XMODEM or
+                     xmodem.MODE_XMODEM1K)
+        :type mode: int
+        :param retry: The maximum number of times to try to resend a failed
+                      packet before failing.
+        :type retry: int
+        :param timeout: The number of seconds to wait for a response before
+                        timing out.
+        :type timeout: int
+        :param quiet: If 0, it prints info to stderr.  If 1, it does not print any info.
+        :type quiet: int
+        :param statusCallback: Reference to a callback function that has the
+                               following signature.  This is useful for
+                               getting status updates while a xmodem
+                               transfer is underway.
+                               Expected callback signature:
+                               def myStatusCallback(total_packets, success_count, error_count)
+        :type statusCallback: callable
         '''
 
         # initialize protocol
+        if mode == MODE_XMODEM1K:
+            packet_size = 1024
+        elif mode == MODE_XMODEM:
+            packet_size = 128
+        else:
+            raise AttributeError("An invalid mode was supplied")
+        
         error_count = 0
         crc_mode = 0
         cancel = 0
@@ -235,7 +267,8 @@ class XMODEM(object):
 
         # send data
         error_count = 0
-        packet_size = 128
+        success_count = 0
+        total_packets = 0
         sequence = 1
         while True:
             data = stream.read(packet_size)
@@ -243,7 +276,7 @@ class XMODEM(object):
                 log.info('sending EOS')
                 # end of stream
                 break
-
+            total_packets += 1
             data = data.ljust(packet_size, '\xff')
             if crc_mode:
                 crc = self.calc_crc(data)
@@ -252,7 +285,10 @@ class XMODEM(object):
 
             # emit packet
             while True:
-                self.putc(SOH)
+                if mode == MODE_XMODEM:
+                    self.putc(SOH)
+                elif mode == MODE_XMODEM1K:
+                    self.putc(STX)
                 self.putc(chr(sequence))
                 self.putc(chr(0xff - sequence))
                 self.putc(data)
@@ -264,9 +300,14 @@ class XMODEM(object):
 
                 char = self.getc(1, timeout)
                 if char == ACK:
+                    success_count += 1
+                    if callable(statusCallback):
+                        statusCallback(total_packets, success_count, error_count)
                     break
                 if char == NAK:
                     error_count += 1
+                    if callable(statusCallback):
+                        statusCallback(total_packets, success_count, error_count)
                     if error_count >= retry:
                         # excessive amounts of retransmissions requested,
                         # abort transfer
