@@ -111,11 +111,12 @@ __author__ = 'Wijnand Modderman <maze@pyth0n.org>'
 __copyright__ = ['Copyright (c) 2010 Wijnand Modderman',
                  'Copyright (c) 1981 Chuck Forsberg']
 __license__ = 'MIT'
-__version__ = '0.2.4'
+__version__ = '0.3'
 
 import logging
 import time
 import sys
+from functools import partial
 
 # Loggerr
 log = logging.getLogger('xmodem')
@@ -125,9 +126,10 @@ SOH = chr(0x01)
 STX = chr(0x02)
 EOT = chr(0x04)
 ACK = chr(0x06)
+DLE = chr(0x10)
 NAK = chr(0x15)
 CAN = chr(0x18)
-CRC = chr(0x43)
+CRC = chr(0x43) # C
 
 
 class XMODEM(object):
@@ -142,6 +144,16 @@ class XMODEM(object):
     ...     return size or None
     ...
     >>> modem = XMODEM(getc, putc)
+
+
+    :param getc: Function to retreive bytes from a stream
+    :type getc: callable
+    :param putc: Function to transmit bytes to a stream
+    :type putc: callable
+    :param mode: XMODEM protocol mode
+    :type mode: string
+    :param pad: Padding character to make the packats match the packet size
+    :type pad: char
 
     '''
 
@@ -181,9 +193,11 @@ class XMODEM(object):
         0x6e17, 0x7e36, 0x4e55, 0x5e74, 0x2e93, 0x3eb2, 0x0ed1, 0x1ef0,
     ]
 
-    def __init__(self, getc, putc):
+    def __init__(self, getc, putc, mode='xmodem', pad='\x1a'):
         self.getc = getc
         self.putc = putc
+        self.mode = mode
+        self.pad = pad
 
     def abort(self, count=2, timeout=60):
         '''
@@ -192,7 +206,7 @@ class XMODEM(object):
         for counter in xrange(0, count):
             self.putc(CAN, timeout)
 
-    def send(self, stream, retry=16, timeout=60, quiet=0):
+    def send(self, stream, retry=16, timeout=60, quiet=0, callback=None):
         '''
         Send a stream via the XMODEM protocol.
 
@@ -202,9 +216,35 @@ class XMODEM(object):
 
         Returns ``True`` upon succesful transmission or ``False`` in case of
         failure.
+
+        :param stream: The stream object to send data from.
+        :type stream: stream (file, etc.)
+        :param retry: The maximum number of times to try to resend a failed
+                      packet before failing.
+        :type retry: int
+        :param timeout: The number of seconds to wait for a response before
+                        timing out.
+        :type timeout: int
+        :param quiet: If 0, it prints info to stderr.  If 1, it does not print any info.
+        :type quiet: int
+        :param callback: Reference to a callback function that has the
+                         following signature.  This is useful for
+                         getting status updates while a xmodem
+                         transfer is underway.
+                         Expected callback signature:
+                         def callback(total_packets, success_count, error_count)
+        :type callback: callable
         '''
 
         # initialize protocol
+        try:
+            packet_size = dict(
+                xmodem    = 128,
+                xmodem1k  = 1024,
+            )[self.mode]
+        except AttributeError:
+            raise ValueError("An invalid mode was supplied")
+
         error_count = 0
         crc_mode = 0
         cancel = 0
@@ -235,7 +275,8 @@ class XMODEM(object):
 
         # send data
         error_count = 0
-        packet_size = 128
+        success_count = 0
+        total_packets = 0
         sequence = 1
         while True:
             data = stream.read(packet_size)
@@ -243,8 +284,8 @@ class XMODEM(object):
                 log.info('sending EOS')
                 # end of stream
                 break
-
-            data = data.ljust(packet_size, '\xff')
+            total_packets += 1
+            data = data.ljust(packet_size, self.pad)
             if crc_mode:
                 crc = self.calc_crc(data)
             else:
@@ -252,7 +293,10 @@ class XMODEM(object):
 
             # emit packet
             while True:
-                self.putc(SOH)
+                if crc_mode:
+                    self.putc(SOH)
+                else:
+                    self.putc(STX)
                 self.putc(chr(sequence))
                 self.putc(chr(0xff - sequence))
                 self.putc(data)
@@ -264,9 +308,14 @@ class XMODEM(object):
 
                 char = self.getc(1, timeout)
                 if char == ACK:
+                    success_count += 1
+                    if callable(callback):
+                        callback(total_packets, success_count, error_count)
                     break
                 if char == NAK:
                     error_count += 1
+                    if callable(callback):
+                        callback(total_packets, success_count, error_count)
                     if error_count >= retry:
                         # excessive amounts of retransmissions requested,
                         # abort transfer
@@ -435,3 +484,78 @@ class XMODEM(object):
         for char in data:
             crc = (crc << 8) ^ self.crctable[((crc >> 8) ^ ord(char)) & 0xff]
         return crc & 0xffff
+
+
+XMODEM1k  = partial(XMODEM, mode='xmodem1k')
+
+
+def run():
+    import optparse
+    import subprocess
+
+    parser = optparse.OptionParser(usage='%prog [<options>] <send|recv> filename filename')
+    parser.add_option('-m', '--mode', default='xmodem',
+        help='XMODEM mode (xmodem, xmodem1k)')
+
+    options, args = parser.parse_args()
+    if len(args) != 3:
+        parser.error('invalid arguments')
+        return 1
+
+    elif args[0] not in ('send', 'recv'):
+        parser.error('invalid mode')
+        return 1
+
+    def _func(so, si):
+        import select
+        import subprocess
+        
+        print 'si', si
+        print 'so', so
+        
+        def getc(size, timeout=3):
+            w,t,f = select.select([so], [], [], timeout)
+            if w:
+                data = so.read(size)
+            else:
+                data = None
+
+            print 'getc(', repr(data), ')'
+            return data
+
+        def putc(data, timeout=3):
+            w,t,f = select.select([], [si], [], timeout)
+            if t:
+                si.write(data)
+                si.flush()
+                size = len(data)
+            else:
+                size = None
+
+            print 'putc(', repr(data), repr(size), ')'
+            return size
+        
+        return getc, putc
+    
+    def _pipe(*command):
+        pipe = subprocess.Popen(command,
+            stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+        return pipe.stdout, pipe.stdin
+    
+    if args[0] == 'recv':
+        import StringIO
+        getc, putc = _func(*_pipe('sz', '--xmodem', args[2]))
+        stream = open(args[1], 'wb')
+        xmodem = XMODEM(getc, putc, mode=options.mode)
+        status = xmodem.recv(stream, retry=8)
+        stream.close()
+    
+    elif args[0] == 'send':
+        getc, putc = _func(*_pipe('rz', '--xmodem', args[2]))
+        stream = open(args[1], 'rb')
+        xmodem = XMODEM(getc, putc, mode=options.mode)
+        status = xmodem.send(stream, retry=8)
+        stream.close()
+
+if __name__ == '__main__':
+    sys.exit(run())
