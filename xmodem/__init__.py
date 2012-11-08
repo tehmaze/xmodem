@@ -121,13 +121,14 @@ import sys
 log = logging.getLogger('xmodem')
 
 # Protocol bytes
-SOH = chr(0x01)
-STX = chr(0x02)
-EOT = chr(0x04)
-ACK = chr(0x06)
-NAK = chr(0x15)
-CAN = chr(0x18)
-CRC = chr(0x43) # C
+SOH = chr(0x01)     # ^A
+STX = chr(0x02)     # ^B
+EOT = chr(0x04)     # ^D
+ACK = chr(0x06)     # ^F
+NAK = chr(0x15)     # ^U
+CAN = chr(0x18)     # ^X
+CPMEOF = chr(0x1a)  # ^Z
+CRC = chr(0x43)     # C
 
 MODE_XMODEM = 0
 MODE_XMODEM1K = 1
@@ -228,6 +229,8 @@ class XMODEM(object):
                                def myStatusCallback(total_packets, success_count, error_count)
         :type statusCallback: callable
         '''
+        if statusCallback is not None and callable(statusCallback) is False:
+            raise AttributeError("statusCallback must be callable or None")
 
         # initialize protocol
         if mode == MODE_XMODEM1K:
@@ -277,7 +280,7 @@ class XMODEM(object):
                 # end of stream
                 break
             total_packets += 1
-            data = data.ljust(packet_size, '\xff')
+            data = data.ljust(packet_size, CPMEOF)
             if crc_mode:
                 crc = self.calc_crc(data)
             else:
@@ -301,12 +304,12 @@ class XMODEM(object):
                 char = self.getc(1, timeout)
                 if char == ACK:
                     success_count += 1
-                    if callable(statusCallback):
+                    if statusCallback:
                         statusCallback(total_packets, success_count, error_count)
                     break
                 if char == NAK:
                     error_count += 1
-                    if callable(statusCallback):
+                    if statusCallback:
                         statusCallback(total_packets, success_count, error_count)
                     if error_count >= retry:
                         # excessive amounts of retransmissions requested,
