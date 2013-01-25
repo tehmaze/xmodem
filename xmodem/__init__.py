@@ -107,11 +107,12 @@ YMODEM Batch Transmission Session (1 file)
 
 '''
 
-__author__ = 'Wijnand Modderman <maze@pyth0n.org>'
-__copyright__ = ['Copyright (c) 2010 Wijnand Modderman',
+__author__ = 'Kris Hardy <kris@rhs.com>'
+__copyright__ = ['Copyright (c) 2012 Kris Hardy',
+                 'Copyright (c) 2010 Wijnand Modderman',
                  'Copyright (c) 1981 Chuck Forsberg']
 __license__ = 'MIT'
-__version__ = '0.2.5'
+__version__ = '0.2.6'
 
 import logging
 import time
@@ -132,6 +133,12 @@ CRC = chr(0x43)     # C
 
 MODE_XMODEM = 0
 MODE_XMODEM1K = 1
+
+SUCCESS = True
+TIMED_OUT = 2
+NAKD_OUT = 3
+CANCELLED = 4
+ERROR_LIMIT_EXCEEDED = 5
 
 
 class XMODEM(object):
@@ -240,7 +247,12 @@ class XMODEM(object):
         else:
             raise AttributeError("An invalid mode was supplied")
         
+        """
+        Wait for NAK/CRC/CAN message from receiver  to signify that it is
+        ready, and use the NAC/CRC to tell us which crc algorithm to use
+        """
         error_count = 0
+        timeout_count = 0
         crc_mode = 0
         cancel = 0
         while True:
@@ -256,24 +268,33 @@ class XMODEM(object):
                     if not quiet:
                         print >> sys.stderr, 'received CAN'
                     if cancel:
-                        return False
+                        return CANCELLED
                     else:
                         cancel = 1
                 else:
                     log.error('send ERROR expected NAK/CRC, got %s' % \
                         (ord(char),))
-
-            error_count += 1
+                    error_count += 1
+            else:
+                timeout_count += 1
+                
             if error_count >= retry:
                 self.abort(timeout=timeout)
-                return False
+                return ERROR_LIMIT_EXCEEDED
+            
+            if timeout_count >= retry:
+                self.abort(timeout=timeout)
+                return TIMED_OUT
 
         # send data
         error_count = 0
+        nak_count = 0
+        timeout_count = 0
         success_count = 0
         total_packets = 0
         sequence = 1
         while True:
+            # Read in packet from file and prepare xmodem packet
             data = stream.read(packet_size)
             if not data:
                 log.info('sending EOS')
@@ -302,36 +323,50 @@ class XMODEM(object):
                     self.putc(chr(crc))
 
                 char = self.getc(1, timeout)
-                if char == ACK:
-                    success_count += 1
-                    if statusCallback:
-                        statusCallback(total_packets, success_count, error_count)
-                    break
-                if char == NAK:
-                    error_count += 1
-                    if statusCallback:
-                        statusCallback(total_packets, success_count, error_count)
-                    if error_count >= retry:
-                        # excessive amounts of retransmissions requested,
-                        # abort transfer
-                        self.abort(timeout=timeout)
-                        log.warning('excessive NAKs, transfer aborted')
-                        return False
-
-                    # return to loop and resend
-                    continue
-
-                # protocol error
-                self.abort(timeout=timeout)
-                log.error('protocol error')
-                return False
+                if char:
+                    if char == ACK:
+                        success_count += 1
+                        if statusCallback:
+                            statusCallback(total_packets, success_count, error_count)
+                        break
+                    elif char == NAK:
+                        nak_count += 1
+                        if statusCallback:
+                            statusCallback(total_packets, success_count, error_count)
+                        if nak_count >= retry:
+                            # excessive amounts of retransmissions requested,
+                            # abort transfer
+                            self.abort(timeout=timeout)
+                            log.warning('excessive NAKs, transfer aborted')
+                            return NAKD_OUT
+    
+                        # return to loop and resend
+                        continue
+                    else:
+                        # Some unknown character was received
+                        error_count += 1
+                else:
+                    # No data was received, and the connection timed out
+                    timeout_count += 1
+                
+                # Abort on the first error
+                if error_count > 0:
+                    self.abort(timeout=timeout)
+                    log.error("protocol error")
+                    return ERROR_LIMIT_EXCEEDED
+                
+                # If we have timed out, make a note of it and abort
+                if timeout_count > 0:
+                    self.abort(timeout=timeout)
+                    log.error('timeout while waiting for response')
+                    return TIMED_OUT
 
             # keep track of sequence
             sequence = (sequence + 1) % 0x100
 
         # end of transmission
         self.putc(EOT)
-        return True
+        return SUCCESS
 
     def recv(self, stream, crc_mode=1, retry=16, timeout=60, delay=1, quiet=0):
         '''
