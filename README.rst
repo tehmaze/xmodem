@@ -4,7 +4,7 @@
 
 Documentation available at http://packages.python.org/xmodem/
 
-Source is available at ?
+Source is available at https://github.com/krishardy/xmodem
 
 Usage
 =====
