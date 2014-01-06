@@ -32,3 +32,6 @@ To download a file, use the ``recv`` method::
 For more information, take a look at the documentation_.
 
 .. _documentation: http://packages.python.org/xmodem/xmodem.html
+
+.. image:: https://travis-ci.org/tehmaze/xmodem.png?branch=master
+   :target: https://travis-ci.org/tehmaze/xmodem
