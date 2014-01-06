@@ -111,7 +111,7 @@ __author__ = 'Wijnand Modderman <maze@pyth0n.org>'
 __copyright__ = ['Copyright (c) 2010 Wijnand Modderman',
                  'Copyright (c) 1981 Chuck Forsberg']
 __license__ = 'MIT'
-__version__ = '0.3'
+__version__ = '0.3.1'
 
 import logging
 import time
@@ -152,7 +152,7 @@ class XMODEM(object):
     :type putc: callable
     :param mode: XMODEM protocol mode
     :type mode: string
-    :param pad: Padding character to make the packats match the packet size
+    :param pad: Padding character to make the packets match the packet size
     :type pad: char
 
     '''
@@ -281,7 +281,7 @@ class XMODEM(object):
         while True:
             data = stream.read(packet_size)
             if not data:
-                log.info('sending EOS')
+                log.info('sending EOT')
                 # end of stream
                 break
             total_packets += 1
@@ -293,9 +293,9 @@ class XMODEM(object):
 
             # emit packet
             while True:
-                if crc_mode:
+                if packet_size == 128:
                     self.putc(SOH)
-                else:
+                else:  # packet_size == 1024
                     self.putc(STX)
                 self.putc(chr(sequence))
                 self.putc(chr(0xff - sequence))
@@ -334,8 +334,21 @@ class XMODEM(object):
             # keep track of sequence
             sequence = (sequence + 1) % 0x100
 
-        # end of transmission
-        self.putc(EOT)
+        while True:
+            # end of transmission
+            self.putc(EOT)
+            
+            #An ACK should be returned
+            char = self.getc(1, timeout)
+            if char == ACK:
+                break
+            else:
+                error_count += 1
+                if error_count >= retry:
+                    self.abort(timeout=timeout)
+                    log.warning('EOT was not ACKd, transfer aborted')
+                    return False
+        
         return True
 
     def recv(self, stream, crc_mode=1, retry=16, timeout=60, delay=1, quiet=0):
@@ -377,7 +390,7 @@ class XMODEM(object):
             elif char == SOH:
                 #crc_mode = 0
                 break
-            elif char in [STX, CAN]:
+            elif char == STX:
                 break
             elif char == CAN:
                 if cancel:
@@ -402,6 +415,9 @@ class XMODEM(object):
                     packet_size = 1024
                     break
                 elif char == EOT:
+                    # We received an EOT, so send an ACK and return the received
+                    # data length
+                    self.putc(ACK)
                     return income_size
                 elif char == CAN:
                     # cancel at two consecutive cancels
@@ -417,7 +433,6 @@ class XMODEM(object):
                     if error_count >= retry:
                         self.abort()
                         return None
-
             # read sequence
             error_count = 0
             cancel = 0
@@ -426,7 +441,7 @@ class XMODEM(object):
             if seq1 == sequence and seq2 == sequence:
                 # sequence is ok, read packet
                 # packet_size + checksum
-                data = self.getc(packet_size + 1 + crc_mode)
+                data = self.getc(packet_size + 1 + crc_mode, timeout)
                 if crc_mode:
                     csum = (ord(data[-2]) << 8) + ord(data[-1])
                     data = data[:-2]
@@ -457,7 +472,7 @@ class XMODEM(object):
             # something went wrong, request retransmission
             self.putc(NAK)
 
-    def calc_checksum(self, data, checksum=0):
+    def calc_checksum(self, data, checksum=0):  
         '''
         Calculate the checksum for a given block of data, can also be used to
         update a checksum.

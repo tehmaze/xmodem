@@ -22,7 +22,7 @@ class FakeIO(object):
         data = []
         while size:
             try:
-                char = self.streams[q].get()
+                char = self.streams[q].get(timeout=0.5)  # Wait at most 1/2 second for data in the queue
                 print 'r%d(0x%x)' % (q, ord(char)),
                 sys.stdout.flush()
                 data.append(char)
