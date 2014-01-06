@@ -111,7 +111,7 @@ __author__ = 'Wijnand Modderman <maze@pyth0n.org>'
 __copyright__ = ['Copyright (c) 2010 Wijnand Modderman',
                  'Copyright (c) 1981 Chuck Forsberg']
 __license__ = 'MIT'
-__version__ = '0.3.1'
+__version__ = '0.3.2'
 
 import logging
 import time
