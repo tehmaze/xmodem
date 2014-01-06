@@ -472,7 +472,7 @@ class XMODEM(object):
             # something went wrong, request retransmission
             self.putc(NAK)
 
-    def calc_checksum(self, data, checksum=0):  
+    def calc_checksum(self, data, checksum=0):
         '''
         Calculate the checksum for a given block of data, can also be used to
         update a checksum.
