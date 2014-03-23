@@ -35,3 +35,6 @@ For more information, take a look at the documentation_.
 
 .. image:: https://travis-ci.org/tehmaze/xmodem.png?branch=master
    :target: https://travis-ci.org/tehmaze/xmodem
+
+.. image:: https://coveralls.io/repos/tehmaze/xmodem/badge.png
+   :target: https://coveralls.io/r/tehmaze/xmodem
