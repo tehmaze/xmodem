@@ -1,3 +1,5 @@
 /.project
 /.pydevproject
 *.pyc
+/dist
+/xmodem.egg-info
