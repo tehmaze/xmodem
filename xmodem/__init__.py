@@ -497,7 +497,7 @@ class XMODEM(object):
 
         '''
         for char in data:
-            crc = (crc << 8) ^ self.crctable[((crc >> 8) ^ ord(char)) & 0xff]
+            crc = ((crc << 8) ^ self.crctable[((crc >> 8) ^ ord(char)) & 0xff]) & 0xffff
         return crc & 0xffff
 
 
