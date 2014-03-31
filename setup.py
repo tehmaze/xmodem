@@ -13,6 +13,8 @@ setup(
 
 Documentation available at http://packages.python.org/xmodem/
 
+The source code repository is at https://github.com/tehmaze/xmodem
+
 Usage
 =====
 
