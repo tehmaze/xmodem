@@ -4,6 +4,8 @@
 
 Documentation available at http://packages.python.org/xmodem/
 
+Python Package Index (PyPI) page is available at https://pypi.python.org/pypi/xmodem
+
 Usage
 =====
 
