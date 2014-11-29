@@ -8,7 +8,7 @@ from xmodem import XMODEM
 
 if __name__ == '__main__':
     fd, fn = tempfile.mkstemp()
-    pipe   = subprocess.Popen(['lrx', '--xmodem', fn], 
+    pipe   = subprocess.Popen(['rx', '--xmodem', fn], 
                  stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     si, so = (pipe.stdin, pipe.stdout)
 

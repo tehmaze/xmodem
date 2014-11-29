@@ -5,7 +5,7 @@ import StringIO
 from xmodem import XMODEM
 
 if __name__ == '__main__':
-    pipe   = subprocess.Popen(['sx', '--xmodem', __file__], 
+    pipe   = subprocess.Popen(['sx', '--xmodem', __file__],
                  stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     si, so = (pipe.stdin, pipe.stdout)
 
