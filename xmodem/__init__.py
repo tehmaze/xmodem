@@ -242,8 +242,9 @@ class XMODEM(object):
                 xmodem    = 128,
                 xmodem1k  = 1024,
             )[self.mode]
-        except AttributeError:
-            raise ValueError("An invalid mode was supplied")
+        except KeyError:
+            raise ValueError("Invalid mode specified: {self.mode!r}"
+                             .format(self=self))
 
         error_count = 0
         crc_mode = 0
