@@ -118,9 +118,6 @@ import time
 import sys
 from functools import partial
 
-# Loggerr
-log = logging.getLogger('xmodem')
-
 # Protocol bytes
 SOH = chr(0x01)
 STX = chr(0x02)
@@ -198,6 +195,7 @@ class XMODEM(object):
         self.putc = putc
         self.mode = mode
         self.pad = pad
+        self.log = logging.getLogger('xmodem.XMODEM')
 
     def abort(self, count=2, timeout=60):
         '''
@@ -206,7 +204,7 @@ class XMODEM(object):
         for counter in xrange(0, count):
             self.putc(CAN, timeout)
 
-    def send(self, stream, retry=16, timeout=60, quiet=0, callback=None):
+    def send(self, stream, retry=16, timeout=60, quiet=False, callback=None):
         '''
         Send a stream via the XMODEM protocol.
 
@@ -214,7 +212,7 @@ class XMODEM(object):
             >>> print modem.send(stream)
             True
 
-        Returns ``True`` upon succesful transmission or ``False`` in case of
+        Returns ``True`` upon successful transmission or ``False`` in case of
         failure.
 
         :param stream: The stream object to send data from.
@@ -225,8 +223,8 @@ class XMODEM(object):
         :param timeout: The number of seconds to wait for a response before
                         timing out.
         :type timeout: int
-        :param quiet: If 0, it prints info to stderr.  If 1, it does not print any info.
-        :type quiet: int
+        :param quiet: If True, write transfer information to stderr.
+        :type quiet: bool
         :param callback: Reference to a callback function that has the
                          following signature.  This is useful for
                          getting status updates while a xmodem
@@ -262,15 +260,18 @@ class XMODEM(object):
                     if not quiet:
                         print >> sys.stderr, 'received CAN'
                     if cancel:
+                        self.log.info('Transmission canceled: '
+                                      'Received CAN twice.')
                         return False
                     else:
                         cancel = 1
                 else:
-                    log.error('send ERROR expected NAK/CRC, got %s' % \
-                        (ord(char),))
+                    self.log.error('send ERROR expected NAK/CRC, '
+                                   'got %s', ord(char))
 
             error_count += 1
             if error_count >= retry:
+                self.log.info('error_count reached %s, aborting.', retry)
                 self.abort(timeout=timeout)
                 return False
 
@@ -282,7 +283,7 @@ class XMODEM(object):
         while True:
             data = stream.read(packet_size)
             if not data:
-                log.info('sending EOT')
+                self.log.info('sending EOT')
                 # end of stream
                 break
             total_packets += 1
@@ -321,7 +322,7 @@ class XMODEM(object):
                         # excessive amounts of retransmissions requested,
                         # abort transfer
                         self.abort(timeout=timeout)
-                        log.warning('excessive NAKs, transfer aborted')
+                        self.log.warning('excessive NAKs, transfer aborted')
                         return False
 
                     # return to loop and resend
@@ -329,7 +330,7 @@ class XMODEM(object):
 
                 # protocol error
                 self.abort(timeout=timeout)
-                log.error('protocol error')
+                self.log.error('protocol error (getc returned %r)', char)
                 return False
 
             # keep track of sequence
@@ -338,8 +339,8 @@ class XMODEM(object):
         while True:
             # end of transmission
             self.putc(EOT)
-            
-            #An ACK should be returned
+
+            # An ACK should be returned
             char = self.getc(1, timeout)
             if char == ACK:
                 break
@@ -347,9 +348,10 @@ class XMODEM(object):
                 error_count += 1
                 if error_count >= retry:
                     self.abort(timeout=timeout)
-                    log.warning('EOT was not ACKd, transfer aborted')
+                    self.log.warning('EOT was not ACKd, transfer aborted')
                     return False
-        
+
+        self.log.info('Transmission successful.')
         return True
 
     def recv(self, stream, crc_mode=1, retry=16, timeout=60, delay=1, quiet=0):
@@ -372,6 +374,7 @@ class XMODEM(object):
             # first try CRC mode, if this fails,
             # fall back to checksum mode
             if error_count >= retry:
+                self.log.info('error_count reached %d, aborting.', retry)
                 self.abort(timeout=timeout)
                 return None
             elif crc_mode and error_count < (retry / 2):
@@ -395,6 +398,7 @@ class XMODEM(object):
                 break
             elif char == CAN:
                 if cancel:
+                    self.log.info('Transmission canceled: Received CAN twice.')
                     return None
                 else:
                     cancel = 1
@@ -416,13 +420,17 @@ class XMODEM(object):
                     packet_size = 1024
                     break
                 elif char == EOT:
-                    # We received an EOT, so send an ACK and return the received
-                    # data length
+                    # We received an EOT, so send an ACK and return the
+                    # received data length.
                     self.putc(ACK)
+                    self.log.info("Transmission complete, %d bytes",
+                                  income_size)
                     return income_size
                 elif char == CAN:
                     # cancel at two consecutive cancels
                     if cancel:
+                        self.log.info('Transmission canceled: '
+                                      'Received CAN twice.')
                         return None
                     else:
                         cancel = 1
@@ -432,13 +440,26 @@ class XMODEM(object):
                             'recv ERROR expected SOH/EOT, got', ord(char)
                     error_count += 1
                     if error_count >= retry:
+                        self.log.info('error_count reached %d, aborting.',
+                                      retry)
                         self.abort()
                         return None
+
             # read sequence
             error_count = 0
             cancel = 0
-            seq1 = ord(self.getc(1))
-            seq2 = 0xff - ord(self.getc(1))
+            seq1 = self.getc(1, timeout)
+            if seq1 is None:
+                self.log.warning('getc failed to get first sequence byte')
+                seq2 = None
+            else:
+                seq1 = ord(seq1)
+                seq2 = self.getc(1, timeout)
+                if seq2 is None:
+                    self.log.warning('getc failed to get second sequence byte')
+                else:
+                    seq2 = 0xff - ord(seq2)
+
             if seq1 == sequence and seq2 == sequence:
                 # sequence is ok, read packet
                 # packet_size + checksum
@@ -446,14 +467,14 @@ class XMODEM(object):
                 if crc_mode:
                     csum = (ord(data[-2]) << 8) + ord(data[-1])
                     data = data[:-2]
-                    log.debug('CRC (%04x <> %04x)' % \
-                        (csum, self.calc_crc(data)))
+                    self.log.debug('CRC (%04x <> %04x)',
+                                   csum, self.calc_crc(data))
                     valid = csum == self.calc_crc(data)
                 else:
                     csum = data[-1]
                     data = data[:-1]
-                    log.debug('checksum (checksum(%02x <> %02x)' % \
-                        (ord(csum), self.calc_checksum(data)))
+                    self.log.debug('checksum (checksum(%02x <> %02x)',
+                                   ord(csum), self.calc_checksum(data))
                     valid = ord(csum) == self.calc_checksum(data)
 
                 # valid data, append chunk
@@ -467,10 +488,11 @@ class XMODEM(object):
             else:
                 # consume data
                 self.getc(packet_size + 1 + crc_mode)
-                self.debug('expecting sequence %d, got %d/%d' % \
-                    (sequence, seq1, seq2))
+                self.log.debug('expecting sequence %d, got %s/%s',
+                               sequence, seq1, seq2)
 
             # something went wrong, request retransmission
+            self.log.warning('error in recv(), requesting retransmission')
             self.putc(NAK)
 
     def calc_checksum(self, data, checksum=0):
@@ -502,16 +524,17 @@ class XMODEM(object):
         return crc & 0xffff
 
 
-XMODEM1k  = partial(XMODEM, mode='xmodem1k')
+XMODEM1k = partial(XMODEM, mode='xmodem1k')
 
 
 def run():
     import optparse
     import subprocess
 
-    parser = optparse.OptionParser(usage='%prog [<options>] <send|recv> filename filename')
+    parser = optparse.OptionParser(
+        usage='%prog [<options>] <send|recv> filename filename')
     parser.add_option('-m', '--mode', default='xmodem',
-        help='XMODEM mode (xmodem, xmodem1k)')
+                      help='XMODEM mode (xmodem, xmodem1k)')
 
     options, args = parser.parse_args()
     if len(args) != 3:
@@ -524,14 +547,13 @@ def run():
 
     def _func(so, si):
         import select
-        import subprocess
-        
+
         print 'si', si
         print 'so', so
-        
+
         def getc(size, timeout=3):
-            w,t,f = select.select([so], [], [], timeout)
-            if w:
+            read_ready, _, _ = select.select([so], [], [], timeout)
+            if read_ready:
                 data = so.read(size)
             else:
                 data = None
@@ -540,8 +562,8 @@ def run():
             return data
 
         def putc(data, timeout=3):
-            w,t,f = select.select([], [si], [], timeout)
-            if t:
+            _, write_ready, _ = select.select([], [si], [], timeout)
+            if write_ready:
                 si.write(data)
                 si.flush()
                 size = len(data)
@@ -550,27 +572,29 @@ def run():
 
             print 'putc(', repr(data), repr(size), ')'
             return size
-        
+
         return getc, putc
-    
+
     def _pipe(*command):
         pipe = subprocess.Popen(command,
-            stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+                                stdout=subprocess.PIPE,
+                                stdin=subprocess.PIPE)
         return pipe.stdout, pipe.stdin
-    
+
     if args[0] == 'recv':
-        import StringIO
         getc, putc = _func(*_pipe('sz', '--xmodem', args[2]))
         stream = open(args[1], 'wb')
         xmodem = XMODEM(getc, putc, mode=options.mode)
         status = xmodem.recv(stream, retry=8)
+        assert status, ('Transfer failed, status is', False)
         stream.close()
-    
+
     elif args[0] == 'send':
         getc, putc = _func(*_pipe('rz', '--xmodem', args[2]))
         stream = open(args[1], 'rb')
         xmodem = XMODEM(getc, putc, mode=options.mode)
-        status = xmodem.send(stream, retry=8)
+        sent = xmodem.send(stream, retry=8)
+        assert sent is not None, ('Transfer failed, sent is', sent)
         stream.close()
 
 if __name__ == '__main__':
