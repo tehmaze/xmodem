@@ -2,7 +2,6 @@
 from __future__ import print_function
 import os
 import sys
-import errno
 import select
 import logging
 import tempfile
@@ -17,37 +16,15 @@ except ImportError:
 
 # local
 from xmodem import XMODEM, XMODEM1k
-from .accessories import recv_prog, send_prog
+from .accessories import (
+    recv_prog,
+    send_prog,
+    fill_binary_data,
+    verify_binary_data,
+)
 
 logging.basicConfig(format='%(levelname)-5s %(message)s',
                     level=logging.DEBUG)
-
-
-CHUNKSIZE = 521
-
-
-def _fill_binary_data(stream):
-    for byte in range(0x00, 0xff + 1):
-        stream.write(bytearray([byte] * CHUNKSIZE))
-    stream.seek(0)
-    return stream
-
-
-def _verify_binary_data(stream, padding=b'\xff'):
-    stream.seek(0)
-    for byte in range(0x00, 0xff + 1):
-        assert stream.read(CHUNKSIZE) == bytearray([byte] * CHUNKSIZE)
-    while True:
-        try:
-            # BSD-style EOF
-            data = stream.read(1)
-            assert data in (b'', padding)
-            if data == b'':
-                # BSD-style EOF
-                break
-        except OSError as err:
-            # Linux-style EOF
-            assert err.errno == errno.EIO
 
 
 def _proc_getc(size, timeout=1, proc=None):
@@ -103,15 +80,15 @@ def test_xmodem_send():
         putc = functools.partial(_proc_putc, proc=proc)
 
         xmodem = XMODEM(getc, putc, pad=b'\xbb')
-        stream = _fill_binary_data(BytesIO())
+        stream = fill_binary_data(BytesIO())
 
         # Exercise,
         status = xmodem.send(stream, timeout=5, callback=_send_callback)
 
         # Verify,
         assert status is True
-        _verify_binary_data(stream)
-        _verify_binary_data(open(recv_filename, 'rb'), padding=b'\xbb')
+        verify_binary_data(stream, padding=b'\xbb')
+        verify_binary_data(open(recv_filename, 'rb'), padding=b'\xbb')
         proc.wait()
         assert proc.returncode == 0
 
@@ -126,7 +103,7 @@ def test_xmodem_recv():
     _, send_filename = tempfile.mkstemp()
     try:
         with open(send_filename, 'wb') as stream:
-            _fill_binary_data(stream)
+            fill_binary_data(stream)
         proc = subprocess.Popen(
             (send_prog, '--xmodem', '--verbose', send_filename),
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=0)
@@ -134,7 +111,7 @@ def test_xmodem_recv():
         getc = functools.partial(_proc_getc, proc=proc)
         putc = functools.partial(_proc_putc, proc=proc)
 
-        xmodem = XMODEM(getc, putc, pad=b'\xbb')
+        xmodem = XMODEM(getc, putc)
         recv_stream = BytesIO()
 
         # Exercise,
@@ -142,7 +119,7 @@ def test_xmodem_recv():
 
         # Verify,
         assert status == recv_stream.tell()
-        _verify_binary_data(recv_stream, padding=b'\xbb')
+        verify_binary_data(recv_stream, padding=b'\x1a')
         proc.wait()
         assert proc.returncode == 0
 
@@ -163,15 +140,15 @@ def test_xmodem1k_send():
         putc = functools.partial(_proc_putc, proc=proc)
 
         xmodem = XMODEM1k(getc, putc, pad=b'\xbb')
-        stream = _fill_binary_data(BytesIO())
+        stream = fill_binary_data(BytesIO())
 
         # Exercise,
         status = xmodem.send(stream, timeout=5, callback=_send_callback)
 
         # Verify,
         assert status is True
-        _verify_binary_data(stream)
-        _verify_binary_data(open(recv_filename, 'rb'), padding=b'\xbb')
+        verify_binary_data(stream, padding=b'\xbb')
+        verify_binary_data(open(recv_filename, 'rb'), padding=b'\xbb')
         proc.wait()
         assert proc.returncode == 0
 
@@ -185,7 +162,7 @@ def test_xmodem1k_recv():
     _, send_filename = tempfile.mkstemp()
     try:
         with open(send_filename, 'wb') as stream:
-            _fill_binary_data(stream)
+            fill_binary_data(stream)
         proc = subprocess.Popen(
             (send_prog, '--xmodem', '--verbose', '--1k', send_filename),
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=0)
@@ -193,7 +170,7 @@ def test_xmodem1k_recv():
         getc = functools.partial(_proc_getc, proc=proc)
         putc = functools.partial(_proc_putc, proc=proc)
 
-        xmodem = XMODEM1k(getc, putc, pad=b'\xbb')
+        xmodem = XMODEM1k(getc, putc)
         recv_stream = BytesIO()
 
         # Exercise,
@@ -201,7 +178,7 @@ def test_xmodem1k_recv():
 
         # Verify,
         assert status == recv_stream.tell()
-        _verify_binary_data(recv_stream, padding=b'\xbb')
+        verify_binary_data(recv_stream, padding=b'\x1a')
         proc.wait()
         assert proc.returncode == 0
 
@@ -225,15 +202,15 @@ def test_xmodem_send_16bit_crc():
         putc = functools.partial(_proc_putc, proc=proc)
 
         xmodem = XMODEM(getc, putc, pad=b'\xbb')
-        stream = _fill_binary_data(BytesIO())
+        stream = fill_binary_data(BytesIO())
 
         # Exercise,
         status = xmodem.send(stream, timeout=5, callback=_send_callback)
 
         # Verify,
         assert status is True
-        _verify_binary_data(stream)
-        _verify_binary_data(open(recv_filename, 'rb'), padding=b'\xbb')
+        verify_binary_data(stream, padding=b'\xbb')
+        verify_binary_data(open(recv_filename, 'rb'), padding=b'\xbb')
         proc.wait()
         assert proc.returncode == 0
 
@@ -250,7 +227,7 @@ def test_xmodem_recv_oldstyle_checksum():
     _, send_filename = tempfile.mkstemp()
     try:
         with open(send_filename, 'wb') as stream:
-            _fill_binary_data(stream)
+            fill_binary_data(stream)
         proc = subprocess.Popen(
             (send_prog, '--xmodem', '--verbose', send_filename),
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=0)
@@ -258,7 +235,7 @@ def test_xmodem_recv_oldstyle_checksum():
         getc = functools.partial(_proc_getc, proc=proc)
         putc = functools.partial(_proc_putc, proc=proc)
 
-        xmodem = XMODEM(getc, putc, pad=b'\xbb')
+        xmodem = XMODEM(getc, putc)
         recv_stream = BytesIO()
 
         # Exercise,
@@ -266,7 +243,7 @@ def test_xmodem_recv_oldstyle_checksum():
 
         # Verify,
         assert status == recv_stream.tell()
-        _verify_binary_data(recv_stream, padding=b'\xbb')
+        verify_binary_data(recv_stream, padding=b'\x1a')
         proc.wait()
         assert proc.returncode == 0
 
