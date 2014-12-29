@@ -1,7 +1,9 @@
 import os
+import codecs
 from setuptools import setup
 
 HERE = os.path.dirname(__file__)
+README_RST = os.path.join(HERE, 'README.rst')
 
 setup(
     name='xmodem',
@@ -9,7 +11,7 @@ setup(
     author='Wijnand Modderman, Jeff Quast',
     author_email='maze@pyth0n.org',
     description=('XMODEM protocol implementation.'),
-    long_description = open(os.path.join(HERE, 'README.rst'), 'rb').read(),
+    long_description = codecs.open(README_RST, 'rb', 'utf8').read(),
     license='MIT',
     keywords='xmodem protocol',
     packages=['xmodem'],
