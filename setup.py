@@ -1,11 +1,11 @@
 from setuptools import setup, find_packages
 
 setup(
-    name         = 'xmodem',
-    version      = '0.3.3',
-    author       = 'Wijnand Modderman',
-    author_email = 'maze@pyth0n.org',
-    description  = ('XMODEM protocol implementation.'),
+    name='xmodem',
+    version='0.3.3',
+    author='Wijnand Modderman',
+    author_email='maze@pyth0n.org',
+    description=('XMODEM protocol implementation.'),
     long_description = '''
 ================================
  XMODEM protocol implementation
@@ -45,9 +45,16 @@ For more information, take a look at the documentation_.
 .. _documentation: http://packages.python.org/xmodem/xmodem.html
 
 ''',
-    license      = 'MIT',
-    keywords     = 'xmodem protocol',
-    packages     = ['xmodem'],
-    package_data = {'': ['doc/*.TXT']},
+    license='MIT',
+    keywords='xmodem protocol',
+    packages=['xmodem'],
+    package_data={'': ['doc/*.TXT', 'doc/*.txt']},
+    include_package_data=True,
+    data_files=[
+        ('doc', ('doc/XMODEM.TXT',
+                'doc/XMODEM1K.TXT',
+                'doc/XMODMCRC.TXT',
+                'doc/ymodem.txt'))
+    ],
 )
 
