@@ -503,7 +503,7 @@ class XMODEM(object):
                 # consume data anyway ... even though we will discard it,
                 # it is not the sequence we expected!
                 self.log.error('expected sequence %d, '
-                               'got (seq1=%r, seq2=%r), ',
+                               'got (seq1=%r, seq2=%r), '
                                'receiving next block, will NAK.',
                                sequence, seq1, seq2)
                 self.getc(packet_size + 1 + crc_mode)
