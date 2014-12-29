@@ -8,11 +8,14 @@ env:
   - TOXENV=py34
 
 install:
-  - pip install -q tox
-  - sudo apt-get install lrzsz
+  - pip install -q tox coveralls
+  - sudo apt-get install -qq -y lrzsz
 
 script:
   - tox -e $TOXENV
+
+after_success:
+  - coveralls
 
 notifications:
   email:
