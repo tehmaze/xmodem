@@ -3,3 +3,6 @@
 *.pyc
 /dist
 /xmodem.egg-info
+/.coverage
+/.tox
+*.py.swp

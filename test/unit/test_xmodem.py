@@ -1,8 +1,13 @@
 """
 Unit tests for XMODEM protocol.
 """
-# std
-from StringIO import StringIO
+# std imports
+try:
+    # python 3
+    from io import BytesIO
+except ImportError:
+    # python 2
+    import StringIO.StringIO as BytesIO
 
 # local
 import xmodem
@@ -26,7 +31,7 @@ def test_xmodem_dummy_fails_send(mode):
                           putc=dummy_putc,
                           mode=mode)
     # exercise
-    status = modem.send(StringIO(b'dummy-stream'))
+    status = modem.send(BytesIO(b'dummy-stream'))
     # verify
     assert not status, ("Expected value of status `False'")
 
@@ -39,4 +44,4 @@ def test_xmodem_bad_mode():
                           mode=mode)
     # exercise
     with pytest.raises(ValueError):
-        status = modem.send(StringIO(b'dummy-stream'))
+        status = modem.send(BytesIO(b'dummy-stream'))

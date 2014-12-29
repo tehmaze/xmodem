@@ -1,10 +1,20 @@
 language: python
-python:
- - "2.6"
- - "2.7"
-# install required packages
+
+env:
+  - TOXENV=py26
+  - TOXENV=py27
+  - TOXENV=py33
+  - TOXENV=pypy
+  - TOXENV=py34
+
 install:
- - sudo apt-get install lrzsz
-# command to run tests
+  - pip install -q tox
+  - sudo apt-get install lrzsz
+
 script:
- - make tests
+  - tox -e $TOXENV
+
+notifications:
+  email:
+    - contact@jeffquast.com
+    - maze@pyth0n.org
