@@ -2,6 +2,7 @@
 /.pydevproject
 *.pyc
 /dist
+/build
 /xmodem.egg-info
 /.coverage
 /.tox
