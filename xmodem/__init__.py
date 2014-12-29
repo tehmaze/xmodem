@@ -542,7 +542,7 @@ class XMODEM(object):
                               '(theirs=%04x, ours=%04x), ',
                               their_sum, our_sum)
         else:
-            _checksum = bytearray(data[-1])
+            _checksum = bytearray([data[-1]])
             their_sum = _checksum[0]
             data = data[:-1]
 
