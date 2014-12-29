@@ -539,8 +539,7 @@ class XMODEM(object):
             valid = bool(their_sum == our_sum)
             if not valid:
                 self.log.warn('recv error: checksum fail '
-                              '(theirs=%04x, ours=%04x), '
-                              'data=%r',
+                              '(theirs=%04x, ours=%04x), ',
                               their_sum, our_sum)
         else:
             _checksum = bytearray(data[-1])
