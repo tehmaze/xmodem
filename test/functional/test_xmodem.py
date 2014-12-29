@@ -35,7 +35,7 @@ def _proc_getc(size, timeout=1, proc=None):
                                      .format(proc, proc.returncode))
     logging.debug(('get', size))
     ready_read, _, _ = select.select([proc.stdout], [], [], timeout)
-    if not ready_read:
+    if proc.stdout not in ready_read:
         assert False, ("Timeout on stdout of {0}.".format(proc))
     data = proc.stdout.read(size)
     logging.debug(('got', len(data), data))
@@ -50,7 +50,7 @@ def _proc_putc(data, timeout=1, proc=None):
     assert proc.returncode is None, ("{0} has exited: (returncode={1})"
                                      .format(proc, proc.returncode))
     _, ready_write, _ = select.select([], [proc.stdin], [], timeout)
-    if not ready_write:
+    if proc.stdin not in ready_write:
         assert False, ("Timeout on stdin of {0}.".format(proc))
     logging.debug(('put', len(data), data))
     proc.stdin.write(data)

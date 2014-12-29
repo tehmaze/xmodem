@@ -486,7 +486,7 @@ class XMODEM(object):
             # read sequence
             error_count = 0
             cancel = 0
-            self.log.debug('recv: block sequence')
+            self.log.debug('recv: data block %d', sequence)
             seq1 = self.getc(1, timeout)
             if seq1 is None:
                 self.log.warn('getc failed to get first sequence byte')
@@ -497,6 +497,7 @@ class XMODEM(object):
                 if seq2 is None:
                     self.log.warn('getc failed to get second sequence byte')
                 else:
+                    # second byte is the same as first as 1's complement
                     seq2 = 0xff - ord(seq2)
 
             if not (seq1 == seq2 == sequence):
@@ -510,7 +511,6 @@ class XMODEM(object):
             else:
                 # sequence is ok, read packet
                 # packet_size + checksum
-                self.log.debug('reading data block %d', sequence)
                 data = self.getc(packet_size + 1 + crc_mode, timeout)
                 valid, data = self._verify_recv_checksum(crc_mode, data)
 
@@ -520,13 +520,28 @@ class XMODEM(object):
                     stream.write(data)
                     self.putc(ACK)
                     sequence = (sequence + 1) % 0x100
-                    # get next byte
+                    # get next start-of-header byte
                     char = self.getc(1, timeout)
                     continue
 
             # something went wrong, request retransmission
-            self.log.warn('recv error: requesting retransmission (NAK)')
+            self.log.warn('recv error: purge, requesting retransmission (NAK)')
+            while True:
+                # When the receiver wishes to <nak>, it should call a "PURGE"
+                # subroutine, to wait for the line to clear. Recall the sender
+                # tosses any characters in its UART buffer immediately upon
+                # completing sending a block, to ensure no glitches were mis-
+                # interpreted.  The most common technique is for "PURGE" to
+                # call the character receive subroutine, specifying a 1-second
+                # timeout, and looping back to PURGE until a timeout occurs.
+                # The <nak> is then sent, ensuring the other end will see it.
+                data = self.getc(1, timeout=1)
+                if data is None:
+                    break
+                assert False, data
             self.putc(NAK)
+            # get next start-of-header byte
+            char = self.getc(1, timeout)
             continue
 
     def _verify_recv_checksum(self, crc_mode, data):
