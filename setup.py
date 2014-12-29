@@ -1,60 +1,24 @@
-from setuptools import setup, find_packages
+import os
+from setuptools import setup
+
+HERE = os.path.dirname(__file__)
 
 setup(
     name='xmodem',
-    version='0.3.3',
-    author='Wijnand Modderman',
+    version='0.4.0',
+    author='Wijnand Modderman, Jeff Quast',
     author_email='maze@pyth0n.org',
     description=('XMODEM protocol implementation.'),
-    long_description = '''
-================================
- XMODEM protocol implementation
-================================
-
-Documentation available at http://packages.python.org/xmodem/
-
-The source code repository is at https://github.com/tehmaze/xmodem
-
-Usage
-=====
-
-Create a function to get and put character data (to a serial line for
-example)::
-
-    >>> from xmodem import XMODEM
-    >>> def getc(size, timeout=1):
-    ...     return data or None
-    ...
-    >>> def putc(data, timeout=1):
-    ...     return size or None
-    ...
-    >>> modem = XMODEM(getc, putc)
-
-Now, to upload a file, use the ``send`` method::
-
-    >>> stream = open('/etc/fstab', 'rb')
-    >>> modem.send(stream)
-
-To download a file, use the ``recv`` method::
-
-    >>> stream = open('output', 'wb')
-    >>> modem.recv(stream)
-
-For more information, take a look at the documentation_.
-
-.. _documentation: http://packages.python.org/xmodem/xmodem.html
-
-''',
+    long_description = open(os.path.join(HERE, 'README.rst'), 'rb').read(),
     license='MIT',
     keywords='xmodem protocol',
     packages=['xmodem'],
-    package_data={'': ['doc/*.TXT', 'doc/*.txt']},
+    package_data={'': ['doc/*.TXT', 'doc/*.txt', 'README.rst']},
     include_package_data=True,
     data_files=[
         ('doc', ('doc/XMODEM.TXT',
-                'doc/XMODEM1K.TXT',
-                'doc/XMODMCRC.TXT',
-                'doc/ymodem.txt'))
+                 'doc/XMODEM1K.TXT',
+                 'doc/XMODMCRC.TXT',
+                 'doc/ymodem.txt')),
     ],
 )
-
