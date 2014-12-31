@@ -1,7 +1,5 @@
 tests:
-	PYTHONPATH=. python test/test.py test/test.py
-	PYTHONPATH=. python test/test-recv.py
-	PYTHONPATH=. python test/test-send.py
+	tox
 
 upload:
 	python setup.py sdist upload

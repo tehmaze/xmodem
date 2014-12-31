@@ -1,3 +1,9 @@
+.. image:: https://travis-ci.org/tehmaze/xmodem.png?branch=master
+   :target: https://travis-ci.org/tehmaze/xmodem
+
+.. image:: https://coveralls.io/repos/tehmaze/xmodem/badge.png
+   :target: https://coveralls.io/r/tehmaze/xmodem
+
 ================================
  XMODEM protocol implementation
 ================================
@@ -35,8 +41,11 @@ For more information, take a look at the documentation_.
 
 .. _documentation: http://packages.python.org/xmodem/xmodem.html
 
-.. image:: https://travis-ci.org/tehmaze/xmodem.png?branch=master
-   :target: https://travis-ci.org/tehmaze/xmodem
+Changes
+=======
 
-.. image:: https://coveralls.io/repos/tehmaze/xmodem/badge.png
-   :target: https://coveralls.io/r/tehmaze/xmodem
+0.4.0
+  * enhancement: support for python 3
+    `PR #8 <https://github.com/tehmaze/xmodem/pull/8>`_.
+  * bugfix: CRC failures in XMODEM.recv() were not renegotiated correctly
+    `PR #11 <https://github.com/tehmaze/xmodem/issues/11>`_.
