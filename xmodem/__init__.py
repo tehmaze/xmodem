@@ -311,8 +311,8 @@ class XMODEM(object):
                     if callable(callback):
                         callback(total_packets, success_count, error_count)
                     break
-                if char == NAK:
-                    self.log.warn('send error: NAK received '
+                else:
+                    self.log.warn('send error: non-ACK received '
                                   'for block %d', sequence)
                     error_count += 1
                     if callable(callback):
@@ -327,12 +327,6 @@ class XMODEM(object):
 
                     # return to loop and resend
                     continue
-
-                # protocol error
-                self.log.error('send error: expected ACK, NAK; got %r, '
-                               'aborting.', char)
-                self.abort(timeout=timeout)
-                return False
 
             # keep track of sequence
             sequence = (sequence + 1) % 0x100
