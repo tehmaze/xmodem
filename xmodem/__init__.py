@@ -311,28 +311,19 @@ class XMODEM(object):
                     if callable(callback):
                         callback(total_packets, success_count, error_count)
                     break
-                if char == NAK:
-                    self.log.warn('send error: NAK received '
-                                  'for block %d', sequence)
-                    error_count += 1
-                    if callable(callback):
-                        callback(total_packets, success_count, error_count)
-                    if error_count >= retry:
-                        # excessive amounts of retransmissions requested,
-                        # abort transfer
-                        self.log.error('send error: NAK received %d times, '
-                                       'aborting.', error_count)
-                        self.abort(timeout=timeout)
-                        return False
 
-                    # return to loop and resend
-                    continue
-
-                # protocol error
-                self.log.error('send error: expected ACK, NAK; got %r, '
-                               'aborting.', char)
-                self.abort(timeout=timeout)
-                return False
+                self.log.error('send error: expected ACK; got %r for block %d',
+                               char, sequence)
+                error_count += 1
+                if callable(callback):
+                    callback(total_packets, success_count, error_count)
+                if error_count >= retry:
+                    # excessive amounts of retransmissions requested,
+                    # abort transfer
+                    self.log.error('send error: NAK received %d times, '
+                                   'aborting.', error_count)
+                    self.abort(timeout=timeout)
+                    return False
 
             # keep track of sequence
             sequence = (sequence + 1) % 0x100

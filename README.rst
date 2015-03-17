@@ -44,6 +44,11 @@ For more information, take a look at the documentation_.
 Changes
 =======
 
+0.4.1
+  * bugfix: re-transmit in send() on NAK or timeout, previously
+    re-transmissions (wrongly) occurred only on garbage bytes.
+    `PR #12 <https://github.com/tehmaze/xmodem/pull/12>`_.
+
 0.4.0
   * enhancement: support for python 3
     `PR #8 <https://github.com/tehmaze/xmodem/pull/8>`_.
