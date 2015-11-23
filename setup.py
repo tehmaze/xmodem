@@ -11,6 +11,7 @@ setup(
     author='Wijnand Modderman, Jeff Quast',
     author_email='maze@pyth0n.org',
     description=('XMODEM protocol implementation.'),
+    url='https://github.com/tehmaze/xmodem',
     long_description = codecs.open(README_RST, 'rb', 'utf8').read(),
     license='MIT',
     keywords='xmodem protocol',
