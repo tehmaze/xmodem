@@ -44,6 +44,10 @@ For more information, take a look at the documentation_.
 Changes
 =======
 
+0.4.2:
+  * bugfix: documentation files missing from the release tarball
+    `Issue #16 <https://github.com/tehmaze/xmodem/issues/16>`_.
+
 0.4.1
   * bugfix: re-transmit in send() on NAK or timeout, previously
     re-transmissions (wrongly) occurred only on garbage bytes.
