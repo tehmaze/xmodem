@@ -7,6 +7,9 @@ env:
   - TOXENV=pypy
   - TOXENV=py34
 
+before_install:
+    - sudo apt-get -qq update
+
 install:
   - pip install -q tox coveralls
   - sudo apt-get install -qq -y lrzsz
