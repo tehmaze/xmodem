@@ -145,7 +145,7 @@ class XMODEM(object):
     >>> modem = XMODEM(getc, putc)
 
 
-    :param getc: Function to retreive bytes from a stream
+    :param getc: Function to retrieve bytes from a stream
     :type getc: callable
     :param putc: Function to transmit bytes to a stream
     :type putc: callable
