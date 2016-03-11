@@ -112,7 +112,7 @@ __author__ = 'Wijnand Modderman <maze@pyth0n.org>'
 __copyright__ = ['Copyright (c) 2010 Wijnand Modderman',
                  'Copyright (c) 1981 Chuck Forsberg']
 __license__ = 'MIT'
-__version__ = '0.4.0'
+__version__ = '0.4.3'
 
 import platform
 import logging
@@ -302,9 +302,7 @@ class XMODEM(object):
             # emit packet
             while True:
                 self.log.debug('send: block %d', sequence)
-                self.putc(header)
-                self.putc(data)
-                self.putc(checksum)
+                self.putc(header + data + checksum)
                 char = self.getc(1, timeout)
                 if char == ACK:
                     success_count += 1
