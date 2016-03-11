@@ -302,7 +302,7 @@ class XMODEM(object):
             # emit packet
             while True:
                 self.log.debug('send: block %d', sequence)
-                self.putc(header+data+checksum)
+                self.putc(header + data + checksum)
                 char = self.getc(1, timeout)
                 if char == ACK:
                     success_count += 1
