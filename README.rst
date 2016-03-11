@@ -44,6 +44,14 @@ For more information, take a look at the documentation_.
 Changes
 =======
 
+0.4.3:
+  * bugfix: ``putc()`` callback was called in series, 3 times for each part of
+    xmodem block header, data, and checksum during block transfer.  Now all
+    three data blocks are sent by single ``putc()`` call.  This resolves issues
+    when integrating with microcontrollers or equipment sensitive to timing
+    issues at stream boundaries, `PR #19
+    <https://github.com/tehmaze/xmodem/pull/19>`_.
+
 0.4.2:
   * bugfix: documentation files missing from the release tarball
     `Issue #16 <https://github.com/tehmaze/xmodem/issues/16>`_.
