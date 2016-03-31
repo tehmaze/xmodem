@@ -210,7 +210,7 @@ class XMODEM(object):
         '''
         Send a stream via the XMODEM protocol.
 
-            >>> stream = file('/etc/issue', 'rb')
+            >>> stream = open('/etc/issue', 'rb')
             >>> print(modem.send(stream))
             True
 
@@ -308,6 +308,7 @@ class XMODEM(object):
                     success_count += 1
                     if callable(callback):
                         callback(total_packets, success_count, error_count)
+                    error_count = 0
                     break
 
                 self.log.error('send error: expected ACK; got %r for block %d',
@@ -370,7 +371,7 @@ class XMODEM(object):
         '''
         Receive a stream via the XMODEM protocol.
 
-            >>> stream = file('/etc/issue', 'wb')
+            >>> stream = open('/etc/issue', 'wb')
             >>> print(modem.recv(stream))
             2342
 
