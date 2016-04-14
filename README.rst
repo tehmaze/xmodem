@@ -44,6 +44,16 @@ For more information, take a look at the documentation_.
 Changes
 =======
 
+0.4.4:
+  * bugfix: Large file transfers in ``send()`` were more likely to fail for
+    small values of ``retry``: This value should be the maximum failures per
+    block transfer as documented, but was improperly implemented as the number
+    of failures allowed for the total duration of the transfer, `PR #21
+    <https://github.com/tehmaze/xmodem/pull/21>`_.
+  * bugfix: ``send(retry=n)`` and ``recv(retry=n)`` would not retry ``n-1``
+    times, rather than ``n`` times as documented, causing 'retry=1' to never
+    retry, for example.
+
 0.4.3:
   * bugfix: ``putc()`` callback was called in series, 3 times for each part of
     xmodem block header, data, and checksum during block transfer.  Now all
@@ -57,7 +67,7 @@ Changes
     `Issue #16 <https://github.com/tehmaze/xmodem/issues/16>`_.
 
 0.4.1
-  * bugfix: re-transmit in send() on NAK or timeout, previously
+  * bugfix: re-transmit in ``send()`` on ``NAK`` or timeout, previously
     re-transmissions (wrongly) occurred only on garbage bytes.
     `PR #12 <https://github.com/tehmaze/xmodem/pull/12>`_.
 

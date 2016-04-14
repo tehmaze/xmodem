@@ -112,7 +112,7 @@ __author__ = 'Wijnand Modderman <maze@pyth0n.org>'
 __copyright__ = ['Copyright (c) 2010 Wijnand Modderman',
                  'Copyright (c) 1981 Chuck Forsberg']
 __license__ = 'MIT'
-__version__ = '0.4.3'
+__version__ = '0.4.4'
 
 import platform
 import logging
@@ -210,7 +210,7 @@ class XMODEM(object):
         '''
         Send a stream via the XMODEM protocol.
 
-            >>> stream = file('/etc/issue', 'rb')
+            >>> stream = open('/etc/issue', 'rb')
             >>> print(modem.send(stream))
             True
 
@@ -276,7 +276,7 @@ class XMODEM(object):
                                    'got %r', char)
 
             error_count += 1
-            if error_count >= retry:
+            if error_count > retry:
                 self.log.info('send error: error_count reached %d, '
                               'aborting.', retry)
                 self.abort(timeout=timeout)
@@ -308,6 +308,7 @@ class XMODEM(object):
                     success_count += 1
                     if callable(callback):
                         callback(total_packets, success_count, error_count)
+                    error_count = 0
                     break
 
                 self.log.error('send error: expected ACK; got %r for block %d',
@@ -315,7 +316,7 @@ class XMODEM(object):
                 error_count += 1
                 if callable(callback):
                     callback(total_packets, success_count, error_count)
-                if error_count >= retry:
+                if error_count > retry:
                     # excessive amounts of retransmissions requested,
                     # abort transfer
                     self.log.error('send error: NAK received %d times, '
@@ -338,7 +339,7 @@ class XMODEM(object):
             else:
                 self.log.error('send error: expected ACK; got %r', char)
                 error_count += 1
-                if error_count >= retry:
+                if error_count > retry:
                     self.log.warn('EOT was not ACKd, aborting transfer')
                     self.abort(timeout=timeout)
                     return False
@@ -370,7 +371,7 @@ class XMODEM(object):
         '''
         Receive a stream via the XMODEM protocol.
 
-            >>> stream = file('/etc/issue', 'wb')
+            >>> stream = open('/etc/issue', 'wb')
             >>> print(modem.recv(stream))
             2342
 
@@ -466,7 +467,7 @@ class XMODEM(object):
                         print(err_msg, file=sys.stderr)
                     self.log.warn(err_msg)
                     error_count += 1
-                    if error_count >= retry:
+                    if error_count > retry:
                         self.log.info('error_count reached %d, aborting.',
                                       retry)
                         self.abort()

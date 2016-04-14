@@ -6,4 +6,6 @@
 /xmodem.egg-info
 /.coverage
 /.tox
+/.cache
+/.idea
 *.py.swp

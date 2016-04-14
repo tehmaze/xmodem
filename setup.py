@@ -7,8 +7,8 @@ README_RST = os.path.join(HERE, 'README.rst')
 
 setup(
     name='xmodem',
-    version='0.4.3',
-    author='Wijnand Modderman, Jeff Quast',
+    version='0.4.4',
+    author='Wijnand Modderman, Jeff Quast, Kris Hardy',
     author_email='maze@pyth0n.org',
     description=('XMODEM protocol implementation.'),
     url='https://github.com/tehmaze/xmodem',
