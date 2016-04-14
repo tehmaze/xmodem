@@ -10,10 +10,7 @@ except ImportError:
     from StringIO import StringIO as BytesIO
 
 # local
-from xmodem import NAK
-from xmodem import CRC
-from xmodem import ACK
-from xmodem import XMODEM
+from xmodem import NAK, CRC, ACK, XMODEM
 
 # 3rd-party
 import pytest
@@ -50,15 +47,16 @@ def test_xmodem_dummy_fails_send(mode):
 @pytest.mark.parametrize('stream_data', [BytesIO(b'dummy-stream ' * 17),
                                          BytesIO(b'dummy-stream ' * 1000)])
 def test_xmodem_send_exceed_maximum_number_of_resend(mode, stream_data):
-    """ XMODEM has retry parameter this function ensure that xmodem.send() will
-    return False dude to the fact that resend exceeded """
-    # given,
-    max_resend = 16
+    """ Verify send(retry=n) after 'n' transfer failures of single block. """
 
-    def generator():
+    # given,
+    max_resend = 3
+
+    def getc_generator():
         if mode == 'xmodem':
             yield NAK
         else:
+            # xmodem1k
             yield CRC
 
         if mode == 'xmodem':
@@ -70,52 +68,51 @@ def test_xmodem_send_exceed_maximum_number_of_resend(mode, stream_data):
         while True:
             yield ACK
 
-    mock = generator()
+    mock = getc_generator()
 
     def mock_getc(size, timeout=1):
-        try:
-            # python 2
-            x = mock.next()
-        except AttributeError:
-            # python 3
-            x = next(mock)
-        return x
+        return next(mock)
 
     xmodem = XMODEM(getc=mock_getc, putc=dummy_putc, mode=mode)
+
     # exercise
-    assert not xmodem.send(stream=stream_data, retry=max_resend)
+    result = xmodem.send(stream=stream_data, retry=max_resend)
+
+    # verify
+    assert not result
 
 
 @pytest.mark.parametrize('mode', ['xmodem', 'xmodem1k'])
 @pytest.mark.parametrize('stream_data', [BytesIO(b'dummy-stream ' * 17),
                                          BytesIO(b'dummy-stream ' * 1000)])
 def test_xmodem_send_fails_once_each_packet(mode, stream_data):
-    """ XMODEM has retry parameter this test ensure that the number of retry for
-     the whole stream_data will be higher the max_resend pro packet """
+    """ Verify send(retry=n) under 'n' transfer failures of single block. """
     # given,
-    max_resend = 16
+    max_resend = 1
 
-    def generator():
+    def getc_generator():
         if mode == 'xmodem':
             yield NAK
         else:
+            # xmodem1k
             yield CRC
 
         while True:
+            # fail
             yield None
+
+            # succeed
             yield ACK
 
-    mock = generator()
+    mock = getc_generator()
 
     def mock_getc(size, timeout=1):
-        try:
-            # python 2
-            x = mock.next()
-        except AttributeError:
-            # python 3
-            x = next(mock)
-        return x
+        return next(mock)
 
     xmodem = XMODEM(getc=mock_getc, putc=dummy_putc, mode=mode)
+
     # exercise
-    assert xmodem.send(stream=stream_data, retry=max_resend)
+    result = xmodem.send(stream=stream_data, retry=max_resend)
+
+    # verify
+    assert result
