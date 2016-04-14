@@ -276,7 +276,7 @@ class XMODEM(object):
                                    'got %r', char)
 
             error_count += 1
-            if error_count >= retry:
+            if error_count > retry:
                 self.log.info('send error: error_count reached %d, '
                               'aborting.', retry)
                 self.abort(timeout=timeout)
@@ -316,7 +316,7 @@ class XMODEM(object):
                 error_count += 1
                 if callable(callback):
                     callback(total_packets, success_count, error_count)
-                if error_count >= retry:
+                if error_count > retry:
                     # excessive amounts of retransmissions requested,
                     # abort transfer
                     self.log.error('send error: NAK received %d times, '
@@ -339,7 +339,7 @@ class XMODEM(object):
             else:
                 self.log.error('send error: expected ACK; got %r', char)
                 error_count += 1
-                if error_count >= retry:
+                if error_count > retry:
                     self.log.warn('EOT was not ACKd, aborting transfer')
                     self.abort(timeout=timeout)
                     return False
@@ -467,7 +467,7 @@ class XMODEM(object):
                         print(err_msg, file=sys.stderr)
                     self.log.warn(err_msg)
                     error_count += 1
-                    if error_count >= retry:
+                    if error_count > retry:
                         self.log.info('error_count reached %d, aborting.',
                                       retry)
                         self.abort()
