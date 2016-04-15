@@ -50,9 +50,8 @@ Changes
     block transfer as documented, but was improperly implemented as the number
     of failures allowed for the total duration of the transfer, `PR #21
     <https://github.com/tehmaze/xmodem/pull/21>`_.
-  * bugfix: ``send(retry=n)`` and ``recv(retry=n)`` would not retry ``n-1``
-    times, rather than ``n`` times as documented, causing 'retry=1' to never
-    retry, for example.
+  * bugfix: ``send(retry=n)`` and ``recv(retry=n)`` should retry ``n`` times
+    as documented, was retrying ``n - 1``.
 
 0.4.3:
   * bugfix: ``putc()`` callback was called in series, 3 times for each part of
