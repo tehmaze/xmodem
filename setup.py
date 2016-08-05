@@ -7,10 +7,10 @@ README_RST = os.path.join(HERE, 'README.rst')
 
 setup(
     name='xmodem',
-    version='0.4.4',
-    author='Wijnand Modderman, Jeff Quast, Kris Hardy',
+    version='0.4.5',
+    author='Wijnand Modderman, Jeff Quast, Kris Hardy, Michael Tesch',
     author_email='maze@pyth0n.org',
-    description=('XMODEM protocol implementation.'),
+    description=('XMODEM/YMODEM protocol implementation.'),
     url='https://github.com/tehmaze/xmodem',
     long_description = codecs.open(README_RST, 'rb', 'utf8').read(),
     license='MIT',

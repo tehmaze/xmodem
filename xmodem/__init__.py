@@ -110,9 +110,10 @@ from __future__ import division, print_function
 
 __author__ = 'Wijnand Modderman <maze@pyth0n.org>'
 __copyright__ = ['Copyright (c) 2010 Wijnand Modderman',
-                 'Copyright (c) 1981 Chuck Forsberg']
+                 'Copyright (c) 1981 Chuck Forsberg',
+                 'Copyright (c) 2016 Michael Tesch']
 __license__ = 'MIT'
-__version__ = '0.4.4'
+__version__ = '0.4.5'
 
 import platform
 import logging
@@ -121,6 +122,7 @@ import sys
 from functools import partial
 
 # Protocol bytes
+NUL = b'\x00'
 SOH = b'\x01'
 STX = b'\x02'
 EOT = b'\x04'
@@ -241,6 +243,7 @@ class XMODEM(object):
             packet_size = dict(
                 xmodem    = 128,
                 xmodem1k  = 1024,
+                ymodem    = 1024,
             )[self.mode]
         except KeyError:
             raise ValueError("Invalid mode specified: {self.mode!r}"
@@ -286,20 +289,55 @@ class XMODEM(object):
         error_count = 0
         success_count = 0
         total_packets = 0
-        sequence = 1
+        if self.mode == 'ymodem':
+            sequence = 0
+            filenames = stream
+        else:
+            sequence = 1
         while True:
-            data = stream.read(packet_size)
-            if not data:
-                # end of stream
-                self.log.debug('send: at EOF')
-                break
-            total_packets += 1
+            # build packet
+            if self.mode == 'ymodem' and sequence == 0:
+                # send packet sequence 0 containing:
+                #  Filename Length [Modification-Date [Mode [Serial-Number]]]
+                # 'stream' is actually the filename
+                import os
+                if len(filenames):
+                    filename = filenames.pop()
+                    stream = open(filename, 'rb')
+                    stat = os.stat(filename)
+                    data = os.path.basename(filename) + NUL + str(stat.st_size)
+                    self.log.debug('ymodem sending : "%s" len:%d', filename, stat.st_size)
+                else:
+                    # empty file name packet terminates transmission
+                    filename = ''
+                    data = ''
+                    stream = None
+                    self.log.debug('ymodem done.')
+                if len(data) <= 128:
+                    header_size = 128
+                else:
+                    header_size = 1024
 
-            header = self._make_send_header(packet_size, sequence)
-            data = data.ljust(packet_size, self.pad)
-            checksum = self._make_send_checksum(crc_mode, data)
+                header = self._make_send_header(header_size, sequence)
+                data = data.ljust(header_size, NUL)
+                checksum = self._make_send_checksum(crc_mode, data)
+            else:
+                # happens after sending ymodem empty filename
+                if not stream:
+                    return True
+                # normal data packet
+                data = stream.read(packet_size)
+                if not data:
+                    # end of stream
+                    self.log.debug('send: at EOF')
+                    break
+                total_packets += 1
 
-            # emit packet
+                header = self._make_send_header(packet_size, sequence)
+                data = data.ljust(packet_size, self.pad)
+                checksum = self._make_send_checksum(crc_mode, data)
+
+            # emit packet & get ACK
             while True:
                 self.log.debug('send: block %d', sequence)
                 self.putc(header + data + checksum)
@@ -309,7 +347,14 @@ class XMODEM(object):
                     if callable(callback):
                         callback(total_packets, success_count, error_count)
                     error_count = 0
-                    break
+                    if self.mode == 'ymodem' and sequence == 0 and len(filename):
+                        char = self.getc(1, timeout)
+                        if char == CRC:
+                            break
+                        self.log.error('send error: ymodem expected CRC; got %r for block %d',
+                                       char, sequence)
+                    else:
+                        break
 
                 self.log.error('send error: expected ACK; got %r for block %d',
                                char, sequence)
@@ -327,6 +372,7 @@ class XMODEM(object):
             # keep track of sequence
             sequence = (sequence + 1) % 0x100
 
+        # emit EOT and get corresponding ACK
         while True:
             self.log.debug('sending EOT, awaiting ACK')
             # end of transmission
@@ -345,6 +391,10 @@ class XMODEM(object):
                     return False
 
         self.log.info('Transmission successful (ACK received).')
+        if self.mode == 'ymodem':
+            stream.close()
+            # YMODEM - recursively send next file
+            return self.send(filenames, retry, timeout, quiet, callback)
         return True
 
     def _make_send_header(self, packet_size, sequence):
@@ -593,6 +643,7 @@ class XMODEM(object):
 
 
 XMODEM1k = partial(XMODEM, mode='xmodem1k')
+YMODEM = partial(XMODEM, mode='ymodem')
 
 
 def run():
@@ -602,10 +653,13 @@ def run():
     parser = optparse.OptionParser(
         usage='%prog [<options>] <send|recv> filename filename')
     parser.add_option('-m', '--mode', default='xmodem',
-                      help='XMODEM mode (xmodem, xmodem1k)')
+                      help='XMODEM mode (xmodem, xmodem1k, ymodem)')
 
     options, args = parser.parse_args()
-    if len(args) != 3:
+    if options.mode != 'ymodem' and len(args) != 3:
+        parser.error('invalid arguments')
+        return 1
+    elif len(args) < 2:
         parser.error('invalid arguments')
         return 1
 
@@ -658,12 +712,24 @@ def run():
         stream.close()
 
     elif args[0] == 'send':
-        getc, putc = _func(*_pipe('rz', '--xmodem', args[2]))
-        stream = open(args[1], 'rb')
+        rzargs = ['rz']
+        if options.mode == 'ymodem':
+            rzargs += ['--ymodem']
+        else:
+            rzargs += ['--xmodem']
+            rzargs += args[2]
+        print(rzargs)
+        getc, putc = _func(*_pipe(*rzargs))
+        if options.mode != 'ymodem':
+            stream = open(args[1], 'rb')
+        else:
+            stream = args[1:]
         xmodem = XMODEM(getc, putc, mode=options.mode)
         sent = xmodem.send(stream, retry=8)
         assert sent is not None, ('Transfer failed, sent is', sent)
-        stream.close()
+        if options.mode != 'ymodem':
+            stream.close()
 
 if __name__ == '__main__':
+    #logging.basicConfig()
     sys.exit(run())
