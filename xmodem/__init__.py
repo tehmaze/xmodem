@@ -296,7 +296,7 @@ class XMODEM(object):
             sequence = 1
         while True:
             # build packet
-            if self.mode == 'ymodem' and sequence == 0:
+            if self.mode == 'ymodem' and success_count == 0:
                 # send packet sequence 0 containing:
                 #  Filename Length [Modification-Date [Mode [Serial-Number]]]
                 # 'stream' is actually the filename
@@ -312,7 +312,7 @@ class XMODEM(object):
                     filename = ''
                     data = ''
                     stream = None
-                    self.log.debug('ymodem done.')
+                    self.log.debug('ymodem done, sending empty header.')
                 if len(data) <= 128:
                     header_size = 128
                 else:
@@ -347,8 +347,10 @@ class XMODEM(object):
                     if callable(callback):
                         callback(total_packets, success_count, error_count)
                     error_count = 0
-                    if self.mode == 'ymodem' and sequence == 0 and len(filename):
+                    if self.mode == 'ymodem' and success_count == 1 and len(filename):
                         char = self.getc(1, timeout)
+                        if char == DLE: # dunno why
+                            char = self.getc(1, timeout)
                         if char == CRC:
                             break
                         self.log.error('send error: ymodem expected CRC; got %r for block %d',
@@ -392,8 +394,9 @@ class XMODEM(object):
 
         self.log.info('Transmission successful (ACK received).')
         if self.mode == 'ymodem':
-            stream.close()
             # YMODEM - recursively send next file
+            # or empty filename header to end the xfer batch.
+            stream.close()
             return self.send(filenames, retry, timeout, quiet, callback)
         return True
 
@@ -662,7 +665,6 @@ def run():
     elif len(args) < 2:
         parser.error('invalid arguments')
         return 1
-
     elif args[0] not in ('send', 'recv'):
         parser.error('invalid mode')
         return 1
@@ -718,7 +720,6 @@ def run():
         else:
             rzargs += ['--xmodem']
             rzargs += args[2]
-        print(rzargs)
         getc, putc = _func(*_pipe(*rzargs))
         if options.mode != 'ymodem':
             stream = open(args[1], 'rb')
@@ -731,5 +732,4 @@ def run():
             stream.close()
 
 if __name__ == '__main__':
-    #logging.basicConfig()
     sys.exit(run())
