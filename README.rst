@@ -32,6 +32,11 @@ Now, to upload a file, use the ``send`` method::
     >>> stream = open('/etc/fstab', 'rb')
     >>> modem.send(stream)
 
+Or, if using YMODEM, pass a list of file paths::
+
+    >>> modem = YMODEM(getc, putc)
+    >>> modem.send(['/etc/fstab', '/etc/hosts'])
+
 To download a file, use the ``recv`` method::
 
     >>> stream = open('output', 'wb')
@@ -44,6 +49,8 @@ For more information, take a look at the documentation_.
 Changes
 =======
 
+0.4.5:
+  * enhancement: added YMODEM ``send()`` capability.
 0.4.4:
   * bugfix: Large file transfers in ``send()`` were more likely to fail for
     small values of ``retry``: This value should be the maximum failures per
