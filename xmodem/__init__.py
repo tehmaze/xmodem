@@ -443,7 +443,7 @@ class XMODEM(object):
                     break
                 elif char == STX:
                     if packet_size != 1024:
-                        self.log.debug('recv: SOH, using 1k packet_size')
+                        self.log.debug('recv: STX, using 1k packet_size')
                         packet_size = 1024
                         retry = packet_size + 5
                     break
