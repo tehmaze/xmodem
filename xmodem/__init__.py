@@ -536,6 +536,12 @@ class XMODEM(object):
                     # get next start-of-header byte
                     char = self.getc(1, timeout)
                     continue
+                else:
+                    self.log.error('CRC error: expected sequence %d, '
+                                   'got (seq1=%r, seq2=%r), '
+                                   'receiving next block, will NAK.',
+                                    sequence, seq1, seq2)
+                    self.putc(NAK)
 
             # get next start-of-header byte
             char = self.getc(1, timeout)
