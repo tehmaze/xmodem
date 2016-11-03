@@ -2,7 +2,7 @@ pipeline:
   build:
     image: debian
     commands:
-      - apt -qq update
-      - apt -qq install lrzsz git python python-pip python3
+      - apt-get -qq update
+      - apt-get -qq install lrzsz git python python-pip python3
       - pip install -r requirements-testing.txt
       - tox
