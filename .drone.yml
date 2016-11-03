@@ -1,8 +1,6 @@
 pipeline:
   build:
-    image: debian
+    image: maze/drone-python
     commands:
-      - apt-get -qq update
-      - apt-get -qq install lrzsz git python python-pip python3
       - pip install -r requirements-testing.txt
       - tox
