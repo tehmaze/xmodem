@@ -1,7 +1,8 @@
 pipeline:
   build:
-    image: alpine
+    image: debian
     commands:
-      - apk add --no-cache git python py-pip
+      - apt -qq update
+      - apt -qq install lrzsz git python python-pip python3
       - pip install -r requirements-testing.txt
       - tox
