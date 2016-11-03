@@ -1,0 +1,12 @@
+pipeline:
+  build:
+    image: alpine
+    commands:
+      - apt add --no-cache $PYTHON
+      - pip install -r requirements-testing.txt
+      - tox
+
+matrix:
+  PYTHON:
+    - python
+    - python3
