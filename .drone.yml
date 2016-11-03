@@ -2,6 +2,6 @@ pipeline:
   build:
     image: alpine
     commands:
-      - apk add --no-cache python py-pip
+      - apk add --no-cache git python py-pip
       - pip install -r requirements-testing.txt
       - tox
