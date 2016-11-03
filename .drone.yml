@@ -2,11 +2,6 @@ pipeline:
   build:
     image: alpine
     commands:
-      - apk add --no-cache $PYTHON
+      - apk add --no-cache python py-pip
       - pip install -r requirements-testing.txt
       - tox
-
-matrix:
-  PYTHON:
-    - python
-    - python3
