@@ -18,12 +18,14 @@ Usage
 Create a function to get and put character data (to a serial line for
 example)::
 
+    >>> import serial
     >>> from xmodem import XMODEM
+    >>> ser = serial.Serial('/dev/ttyUSB0', timeout=0) # or whatever port you need
     >>> def getc(size, timeout=1):
-    ...     return data or None
+    ...     return ser.read(size) or None
     ...
     >>> def putc(data, timeout=1):
-    ...     return size or None
+    ...     return ser.write(data)  # note that this ignores the timeout
     ...
     >>> modem = XMODEM(getc, putc)
 
