@@ -463,6 +463,7 @@ class XMODEM(object):
         income_size = 0
         packet_size = 128
         sequence = 1
+        last_sequence = 0
         cancel = 0
         while True:
             while True:
@@ -470,11 +471,13 @@ class XMODEM(object):
                     if packet_size != 128:
                         self.log.debug('recv: SOH, using 128b packet_size')
                         packet_size = 128
+                        retry = packet_size + 5
                     break
                 elif char == STX:
                     if packet_size != 1024:
-                        self.log.debug('recv: SOH, using 1k packet_size')
+                        self.log.debug('recv: STX, using 1k packet_size')
                         packet_size = 1024
+                        retry = packet_size + 5
                     break
                 elif char == EOT:
                     # We received an EOT, so send an ACK and return the
@@ -504,6 +507,8 @@ class XMODEM(object):
                                       retry)
                         self.abort()
                         return None
+                    else:
+                        char = self.getc(1, timeout)
 
             # read sequence
             error_count = 0
@@ -524,12 +529,29 @@ class XMODEM(object):
 
             if not (seq1 == seq2 == sequence):
                 # consume data anyway ... even though we will discard it,
-                # it is not the sequence we expected!
-                self.log.error('expected sequence %d, '
-                               'got (seq1=%r, seq2=%r), '
-                               'receiving next block, will NAK.',
-                               sequence, seq1, seq2)
-                self.getc(packet_size + 1 + crc_mode)
+                data = self.getc(packet_size + 1 + crc_mode, timeout)
+                valid, data = self._verify_recv_checksum(crc_mode, data)
+
+                if valid:
+
+                    self.log.debug("CRC verification fine")
+                    if (seq1 == seq2 == last_sequence):
+                        """ There is case when ACK is not received
+                        """
+                        self.putc(ACK)
+                        self.log.error('CRC fine: expected sequence %d, '
+                                       'got (seq1=%r, seq2=%r), '
+                                       'receiving next block',
+                                       sequence, seq1, seq2)
+                    else:
+                        self.log.error('Wierld sequence number, NO ACK')
+                else:
+                    self.log.debug("CRC verification failed")
+                    # it is not the sequence we expected!
+                    self.log.error('expected sequence %d, '
+                                   'got (seq1=%r, seq2=%r), '
+                                   'receiving next block',
+                                   sequence, seq1, seq2)
             else:
                 # sequence is ok, read packet
                 # packet_size + checksum
@@ -541,27 +563,18 @@ class XMODEM(object):
                     income_size += len(data)
                     stream.write(data)
                     self.putc(ACK)
+                    last_sequence = sequence
                     sequence = (sequence + 1) % 0x100
                     # get next start-of-header byte
                     char = self.getc(1, timeout)
                     continue
+                else:
+                    self.log.error('CRC error: expected sequence %d, '
+                                   'got (seq1=%r, seq2=%r), '
+                                   'receiving next block, will NAK.',
+                                    sequence, seq1, seq2)
+                    self.putc(NAK)
 
-            # something went wrong, request retransmission
-            self.log.warn('recv error: purge, requesting retransmission (NAK)')
-            while True:
-                # When the receiver wishes to <nak>, it should call a "PURGE"
-                # subroutine, to wait for the line to clear. Recall the sender
-                # tosses any characters in its UART buffer immediately upon
-                # completing sending a block, to ensure no glitches were mis-
-                # interpreted.  The most common technique is for "PURGE" to
-                # call the character receive subroutine, specifying a 1-second
-                # timeout, and looping back to PURGE until a timeout occurs.
-                # The <nak> is then sent, ensuring the other end will see it.
-                data = self.getc(1, timeout=1)
-                if data is None:
-                    break
-                assert False, data
-            self.putc(NAK)
             # get next start-of-header byte
             char = self.getc(1, timeout)
             continue
