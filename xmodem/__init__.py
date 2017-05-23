@@ -560,7 +560,6 @@ class XMODEM(object):
                 data = self.getc(1, timeout=1)
                 if data is None:
                     break
-                assert False, data
             self.putc(NAK)
             # get next start-of-header byte
             char = self.getc(1, timeout)
