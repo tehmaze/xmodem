@@ -1,0 +1,7 @@
+pipeline:
+  build:
+    image: maze/drone-python
+    commands:
+      - apt-get -qq install lrzsz
+      - pip install -r requirements-testing.txt
+      - tox

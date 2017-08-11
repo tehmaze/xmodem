@@ -18,12 +18,14 @@ Usage
 Create a function to get and put character data (to a serial line for
 example)::
 
+    >>> import serial
     >>> from xmodem import XMODEM
+    >>> ser = serial.Serial('/dev/ttyUSB0', timeout=0) # or whatever port you need
     >>> def getc(size, timeout=1):
-    ...     return data or None
+    ...     return ser.read(size) or None
     ...
     >>> def putc(data, timeout=1):
-    ...     return size or None
+    ...     return ser.write(data)  # note that this ignores the timeout
     ...
     >>> modem = XMODEM(getc, putc)
 
@@ -49,8 +51,12 @@ For more information, take a look at the documentation_.
 Changes
 =======
 
-0.4.5:
+0.4.6:
   * enhancement: added YMODEM ``send()`` capability.
+0.4.5:
+  * bugfix: Remove bogus `assert False` code in ``recv()`` that resulted in
+    `AssertionError` introduced in version 0.4.0 commit-id `9b03fc20`, `PR #29
+    <https://github.com/tehmaze/xmodem/pull/29>`_.
 0.4.4:
   * bugfix: Large file transfers in ``send()`` were more likely to fail for
     small values of ``retry``: This value should be the maximum failures per
