@@ -510,12 +510,19 @@ class XMODEM(object):
             cancel = 0
             seq1 = None
             seq2 = None
+            is_python_3 = sys.version_info >= (3,0)
             self.log.debug('recv: data block %d', sequence)
             data = self.getc(2 + packet_size + 1 + crc_mode, timeout)
             if len(data) >= 1 :
-                seq1 = bytes([data[0]])
+                if is_python_3 :
+                    seq1 = bytes([data[0]])
+                else :
+                    seq1 = data[0]
             if len(data) >= 2:
-                seq2 = bytes([data[1]])
+                if is_python_3 :
+                    seq2 = bytes([data[1]])
+                else :
+                    seq2 = data[1]
             if len(data) > 2:
                 data = data[2:]
                 # Sanity check data length here
