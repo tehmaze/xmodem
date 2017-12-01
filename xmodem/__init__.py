@@ -518,6 +518,11 @@ class XMODEM(object):
                 seq2 = bytes([data[1]])
             if len(data) > 2:
                 data = data[2:]
+                # Sanity check data length here
+                if len(data) != (packet_size + 1 + crc_mode) :
+                    self.log.warn('recv: Serial data downloaded is wrong length.')
+                    # cancel processing of data?
+                    #seq2 = -1
             else:
                 data = None
 
