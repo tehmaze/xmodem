@@ -512,9 +512,9 @@ class XMODEM(object):
             seq2 = None
             self.log.debug('recv: data block %d', sequence)
             data = self.getc(2 + packet_size + 1 + crc_mode, timeout)
-            if len(data) == 1 :
+            if len(data) >= 1 :
                 seq1 = bytes([data[0]])
-            if len(data) == 2:
+            if len(data) >= 2:
                 seq2 = bytes([data[1]])
             if len(data) > 2:
                 data = data[2:]
