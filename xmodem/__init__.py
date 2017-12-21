@@ -504,6 +504,9 @@ class XMODEM(object):
                                       retry)
                         self.abort()
                         return None
+                    else:
+                        # Allow main loop to try again
+                        break
 
             # read sequence
             error_count = 0
