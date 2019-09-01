@@ -30,7 +30,7 @@ The packet number sent is simply the number of the packet.  If the packet
 
 The 1's complement of a byte (to make life easy) is simply 255 minus the
  byte.  For example, if you had to take the 1's complement of 142, the answer
- would be 255 - 142 = 133.
+ would be 255 - 142 = 113.
 
 The checksum is the value of all the bytes in the packet added together.  For
  example, if the first five bytes were 45, 12, 64, 236, 173 and the other 123
