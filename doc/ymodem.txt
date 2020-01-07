@@ -107,7 +107,7 @@ of weaknesses in the original protocol:
      timesharing systems, packet switched networks, satellite circuits,
      and buffered (error correcting) modems.
 
-   + The 8 bit arithemetic checksum and	other aspects allowed line
+   + The 8 bit arithmetic checksum and	other aspects allowed line
      impairments to interfere with dependable, accurate	transfers.
 
    + Only one file could be sent per command.  The file	name had to be
@@ -303,7 +303,7 @@ diff phone # into the dialing string and branches back to try it.
 This chapter discusses the protocol extensions to Ward Christensen's 1982
 XMODEM protocol	description document.
 
-The original document recommends the user be asked wether to continue
+The original document recommends the user be asked whether to continue
 trying or abort	after 10 retries.  Most	programs no longer ask the
 operator whether he wishes to keep retrying.  Virtually	all correctable
 errors are corrected within the	first few retransmissions.  If the line	is
@@ -845,7 +845,7 @@ bypasses the usual wait	for an ACK to each transmitted packet, sending
 succeeding packets at full speed, subject to XOFF/XON or other flow
 control	exerted	by the medium.
 
-The sender expects an inital G to initiate the transmission of a
+The sender expects an initial G to initiate the transmission of a
 particular file, and also expects an ACK on the	EOT sent at the	end of
 each file.  This synchronization allows	the receiver time to open and
 
