@@ -287,8 +287,12 @@ class XMODEM(object):
                     else:
                         self.log.debug('cancellation at start sequence.')
                         cancel = 1
+                elif char == EOT:
+                    self.log.info('Transmission canceled: received EOT '
+                                  'at start-sequence')
+                    return False
                 else:
-                    self.log.error('send error: expected NAK, CRC, or CAN; '
+                    self.log.error('send error: expected NAK, CRC, EOT or CAN; '
                                    'got %r', char)
 
             error_count += 1
