@@ -63,7 +63,7 @@ With each packet sent...
     1. an STX byte                             {1 byte}
     2. the packet number                       {1 byte}
     3. the 1's complement of the packet number {1 byte}
-    4. the packet                           {1024 bytes}
+    4. the packet                            {128 bytes}
     5. the high byte of the CRC-16             {1 byte}
     6. the low byte of the CRC-16              {1 byte}
 

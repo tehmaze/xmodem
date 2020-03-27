@@ -112,7 +112,7 @@ __author__ = 'Wijnand Modderman <maze@pyth0n.org>'
 __copyright__ = ['Copyright (c) 2010 Wijnand Modderman',
                  'Copyright (c) 1981 Chuck Forsberg']
 __license__ = 'MIT'
-__version__ = '0.4.4'
+__version__ = '0.4.5'
 
 import platform
 import logging
@@ -133,21 +133,32 @@ CRC = b'C'
 
 class XMODEM(object):
     '''
-    XMODEM Protocol handler, expects an object to read from and an object to
-    write to.
+    XMODEM Protocol handler, expects two callables which encapsulate the read
+        and write operations on the underlying stream.
 
+    Example functions for reading and writing to a serial line:
+
+    >>> import serial
+    >>> from xmodem import XMODEM
+    >>> ser = serial.Serial('/dev/ttyUSB0', timeout=0) # or whatever you need
     >>> def getc(size, timeout=1):
-    ...     return data or None
+    ...     return ser.read(size) or None
     ...
     >>> def putc(data, timeout=1):
-    ...     return size or None
+    ...     return ser.write(data) or None
     ...
     >>> modem = XMODEM(getc, putc)
 
 
-    :param getc: Function to retrieve bytes from a stream
+    :param getc: Function to retrieve bytes from a stream. The function takes
+        the number of bytes to read from the stream and a timeout in seconds as
+        parameters. It must return the bytes which were read, or ``None`` if a
+        timeout occured.
     :type getc: callable
-    :param putc: Function to transmit bytes to a stream
+    :param putc: Function to transmit bytes to a stream. The function takes the
+        bytes to be written and a timeout in seconds as parameters. It must
+        return the number of bytes written to the stream, or ``None`` in case of
+        a timeout.
     :type putc: callable
     :param mode: XMODEM protocol mode
     :type mode: string
@@ -202,6 +213,11 @@ class XMODEM(object):
     def abort(self, count=2, timeout=60):
         '''
         Send an abort sequence using CAN bytes.
+
+        :param count: how many abort characters to send
+        :type count: int
+        :param timeout: timeout in seconds
+        :type timeout: int
         '''
         for _ in range(count):
             self.putc(CAN, timeout)
@@ -377,6 +393,22 @@ class XMODEM(object):
 
         Returns the number of bytes received on success or ``None`` in case of
         failure.
+
+        :param stream: The stream object to write data to.
+        :type stream: stream (file, etc.)
+        :param crc_mode: XMODEM CRC mode
+        :type crc_mode: int
+        :param retry: The maximum number of times to try to resend a failed
+                      packet before failing.
+        :type retry: int
+        :param timeout: The number of seconds to wait for a response before
+                        timing out.
+        :type timeout: int
+        :param delay: The number of seconds to wait between resend attempts
+        :type delay: int
+        :param quiet: If ``True``, write transfer information to stderr.
+        :type quiet: bool
+
         '''
 
         # initiate protocol
@@ -528,7 +560,6 @@ class XMODEM(object):
                 data = self.getc(1, timeout=1)
                 if data is None:
                     break
-                assert False, data
             self.putc(NAK)
             # get next start-of-header byte
             char = self.getc(1, timeout)
