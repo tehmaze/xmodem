@@ -46,10 +46,16 @@ For more information, take a look at the documentation_.
 Changes
 =======
 
+0.4.6:
+  * bugfix: Abort send on EOT in startup-sequence `Issue #34 
+    <https://github.com/tehmaze/xmodem/issues/34>`_.
+  * enhancement: Include LICENSE file in the source distribution.
+
 0.4.5:
   * bugfix: Remove bogus `assert False` code in ``recv()`` that resulted in
     `AssertionError` introduced in version 0.4.0 commit-id `9b03fc20`, `PR #29
     <https://github.com/tehmaze/xmodem/pull/29>`_.
+
 0.4.4:
   * bugfix: Large file transfers in ``send()`` were more likely to fail for
     small values of ``retry``: This value should be the maximum failures per
