@@ -614,7 +614,7 @@ class XMODEM(object):
             >>> crc = modem.calc_crc('hello')
             >>> crc = modem.calc_crc('world', crc)
             >>> hex(crc)
-            '0xd5e3'
+            '0x4ab3'
 
         '''
         for char in bytearray(data):
