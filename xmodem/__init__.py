@@ -626,7 +626,85 @@ class XMODEM(object):
 XMODEM1k = partial(XMODEM, mode='xmodem1k')
 
 
+def _send(mode='xmodem', filename=None, timeout=30):
+    '''Send a file (or stdin) using the selected mode.'''
+    
+    if filename is None:
+        si = sys.stdin
+    else:
+        si = open(filename, 'rb')
+
+    # TODO(maze): make this configurable, serial out, etc.
+    so = sys.stdout
+
+    def _getc(size, timeout=timeout):
+        read_ready, _, _ = select.select([so], [], [], timeout)
+        if read_ready:
+            data = stream.read(size)
+        else:
+            data = None
+        return data
+
+    def _putc(data, timeout=timeout):
+        _, write_ready, _ = select.select([], [si], [], timeout)
+        if write_ready:
+            si.write(data)
+            si.flush()
+            size = len(data)
+        else:
+            size = None
+        return size
+
+    xmodem = XMODEM(_getc, _putc, mode)
+    return xmodem.send(si)
+
+
 def run():
+    '''Run the main entry point for sending and receiving files.'''
+    import argparse
+    import serial
+    import sys
+
+    platform = sys.platform.lower()
+
+    if platform.startswith('win'):
+        default_port = 'COM1'
+    else:
+        default_port = '/dev/ttyS0'
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', '--port', default=default_port,
+                        help='serial port')
+    parser.add_argument('-r', '--rate', default=9600, type=int,
+                        help='baud rate')
+    parser.add_argument('-b', '--bytesize', default=serial.EIGHTBITS,
+                        help='serial port transfer byte size')
+    parser.add_argument('-P', '--parity', default=serial.PARITY_NONE,
+                        help='serial port parity')
+    parser.add_argument('-S', '--stopbits', default=serial.STOPBITS_ONE,
+                        help='serial port stop bits')
+    parser.add_argument('-m', '--mode', default='xmodem',
+                        help='XMODEM mode (xmodem, xmodem1k)')
+    parser.add_argument('-t', '--timeout', default=30, type=int,
+                        help='I/O timeout in seconds')
+
+    subparsers = parser.add_subparsers(dest='subcommand')
+    send_parser = subparsers.add_parser('send')
+    send_parser.add_argument('filename', nargs='?',
+                             help='filename to send, empty reads from stdin')
+    recv_parser = subparsers.add_parser('recv')
+    recv_parser.add_argument('filename', nargs='?',
+                             help='filename to receive, empty sends to stdout')
+
+    options = parser.parse_args()
+    
+    if options.subcommand == 'send':
+        return _send(options.mode, options.filename, options.timeout)
+    elif options.subcommand == 'recv':
+        return _recv(options.mode, options.filename, options.timeout)
+
+
+def runx():
     import optparse
     import subprocess
 
