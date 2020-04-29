@@ -5,7 +5,7 @@ Perception presents:
 
 This has to be one of the most internationally accepted protocols for upload-
  ing and downloading binary and text files.  It is fairly straight-forward as
- to how it is set up and there are fairly good error checking capablities.
+ to how it is set up and there are fairly good error checking capabilities.
 
 
 --- Before you begin ---

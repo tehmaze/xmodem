@@ -5,7 +5,7 @@ Perception presents:
 
 This has to be one of the most internationally accepted protocols for upload-
  ing and downloading binary and text files.  It is fairly straight-forward as
- to how it is set up and there are some error checking capablities.
+ to how it is set up and there are some error checking capabilities.
 
 
 --- Before you begin ---
@@ -24,7 +24,7 @@ In order to send the file, you must first divide it into 128 byte sections
  make up the second packet, etc.
 
 The packet number sent is simply the number of the packet.  If the packet
- number is greater than 255, then subtract 256 repeatly until the number is
+ number is greater than 255, then subtract 256 repeatedly until the number is
  between 0 and 255.  For example, if you were sending packet 731, then you
  would send 731 - 256 - 256 = 219.
 
@@ -35,7 +35,7 @@ The 1's complement of a byte (to make life easy) is simply 255 minus the
 The checksum is the value of all the bytes in the packet added together.  For
  example, if the first five bytes were 45, 12, 64, 236, 173 and the other 123
  bytes were zeroes, the checksum would be 45+12+64+236+173+0+0+...+0 = 530.
- However, to make each block one byte smaller, they repeatly subtract 256
+ However, to make each block one byte smaller, they repeatedly subtract 256
  from the checksum until it is between 0 and 255.  In this case, the checksum
  would be 530 - 256 - 256 = 18.
 

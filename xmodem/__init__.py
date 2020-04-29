@@ -153,7 +153,7 @@ class XMODEM(object):
     :param getc: Function to retrieve bytes from a stream. The function takes
         the number of bytes to read from the stream and a timeout in seconds as
         parameters. It must return the bytes which were read, or ``None`` if a
-        timeout occured.
+        timeout occurred.
     :type getc: callable
     :param putc: Function to transmit bytes to a stream. The function takes the
         bytes to be written and a timeout in seconds as parameters. It must
