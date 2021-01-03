@@ -360,7 +360,7 @@ class XMODEM(object):
                 self.log.error('send error: expected ACK; got %r', char)
                 error_count += 1
                 if error_count > retry:
-                    self.log.warn('EOT was not ACKd, aborting transfer')
+                    self.log.warning('EOT was not ACKd, aborting transfer')
                     self.abort(timeout=timeout)
                     return False
 
@@ -442,7 +442,7 @@ class XMODEM(object):
 
             char = self.getc(1, timeout)
             if char is None:
-                self.log.warn('recv error: getc timeout in start sequence')
+                self.log.warning('recv error: getc timeout in start sequence')
                 error_count += 1
                 continue
             elif char == SOH:
@@ -501,7 +501,7 @@ class XMODEM(object):
                                'got {0!r}'.format(char))
                     if not quiet:
                         print(err_msg, file=sys.stderr)
-                    self.log.warn(err_msg)
+                    self.log.warning(err_msg)
                     error_count += 1
                     if error_count > retry:
                         self.log.info('error_count reached %d, aborting.',
@@ -515,13 +515,13 @@ class XMODEM(object):
             self.log.debug('recv: data block %d', sequence)
             seq1 = self.getc(1, timeout)
             if seq1 is None:
-                self.log.warn('getc failed to get first sequence byte')
+                self.log.warning('getc failed to get first sequence byte')
                 seq2 = None
             else:
                 seq1 = ord(seq1)
                 seq2 = self.getc(1, timeout)
                 if seq2 is None:
-                    self.log.warn('getc failed to get second sequence byte')
+                    self.log.warning('getc failed to get second sequence byte')
                 else:
                     # second byte is the same as first as 1's complement
                     seq2 = 0xff - ord(seq2)
@@ -551,7 +551,7 @@ class XMODEM(object):
                     continue
 
             # something went wrong, request retransmission
-            self.log.warn('recv error: purge, requesting retransmission (NAK)')
+            self.log.warning('recv error: purge, requesting retransmission (NAK)')
             while True:
                 # When the receiver wishes to <nak>, it should call a "PURGE"
                 # subroutine, to wait for the line to clear. Recall the sender
@@ -578,7 +578,7 @@ class XMODEM(object):
             our_sum = self.calc_crc(data)
             valid = bool(their_sum == our_sum)
             if not valid:
-                self.log.warn('recv error: checksum fail '
+                self.log.warning('recv error: checksum fail '
                               '(theirs=%04x, ours=%04x), ',
                               their_sum, our_sum)
         else:
@@ -589,7 +589,7 @@ class XMODEM(object):
             our_sum = self.calc_checksum(data)
             valid = their_sum == our_sum
             if not valid:
-                self.log.warn('recv error: checksum fail '
+                self.log.warning('recv error: checksum fail '
                               '(theirs=%02x, ours=%02x)',
                               their_sum, our_sum)
         return valid, data
