@@ -468,7 +468,7 @@ class XMODEM(object):
                     while True:
                         if self.getc(1, timeout=1) == None:
                             break
-                        time.sleep(.001)
+                        time.sleep(.001) # better cpu usage
                     return 0
                 else:
                     self.log.info('first eot received ')
