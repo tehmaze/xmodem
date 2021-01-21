@@ -466,7 +466,7 @@ class XMODEM(object):
                     self.putc(CAN)
                     self.putc(CAN)
                     while True:
-                        if self.getc(1, timeout=1) == None:
+                        if self.getc(1, timeout=1) is None:
                             break
                         time.sleep(.001) # better cpu usage
                     return 0
