@@ -149,7 +149,6 @@ class XMODEM(object):
     ...
     >>> modem = XMODEM(getc, putc)
 
-
     :param getc: Function to retrieve bytes from a stream. The function takes
         the number of bytes to read from the stream and a timeout in seconds as
         parameters. It must return the bytes which were read, or ``None`` if a
@@ -160,7 +159,7 @@ class XMODEM(object):
         return the number of bytes written to the stream, or ``None`` in case of
         a timeout.
     :type putc: callable
-    :param mode: XMODEM protocol mode
+    :param mode: Either ``xmodem`` or ``xmodem1k``, defaults to ``xmodem``.
     :type mode: string
     :param pad: Padding character to make the packets match the packet size
     :type pad: char
@@ -632,7 +631,7 @@ XMODEM1k = partial(XMODEM, mode='xmodem1k')
 
 def _send(mode='xmodem', filename=None, timeout=30):
     '''Send a file (or stdin) using the selected mode.'''
-    
+
     if filename is None:
         si = sys.stdin
     else:
@@ -701,7 +700,7 @@ def run():
                              help='filename to receive, empty sends to stdout')
 
     options = parser.parse_args()
-    
+
     if options.subcommand == 'send':
         return _send(options.mode, options.filename, options.timeout)
     elif options.subcommand == 'recv':
