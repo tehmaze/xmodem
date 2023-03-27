@@ -10,7 +10,7 @@ except ImportError:
     from StringIO import StringIO as BytesIO
 
 # local
-from xmodem import NAK, CRC, ACK, XMODEM
+from xmodem import NAK, CRC, ACK, XMODEM, STX, SOH, EOT
 
 # 3rd-party
 import pytest
@@ -113,6 +113,49 @@ def test_xmodem_send_fails_once_each_packet(mode, stream_data):
 
     # exercise
     result = xmodem.send(stream=stream_data, retry=max_resend)
+
+    # verify
+    assert result
+
+
+def test_xmodem1k_receive_fails_after_first_packet():
+    """ Verify recv reaction to timeout directly after first packet """
+    # given,
+    max_resend = 1
+    mode='xmodem1k'
+
+    def getc_generator():
+        yield STX
+
+        # first packet sequence
+        yield b'\x01'
+        yield b'\xfe'
+
+        yield bytes(1024+1+1)
+
+        # timeout
+        yield None
+
+        # second packet
+        yield STX
+        yield b'\x02'
+        yield b'\xfd'
+
+        yield bytes(1024+1+1)
+
+        # end of transmission
+        yield EOT
+
+    mock = getc_generator()
+
+    def mock_getc(size, timeout=1):
+        return next(mock)
+
+    xmodem = XMODEM(getc=mock_getc, putc=dummy_putc, mode=mode)
+
+    # exercise
+    destination = BytesIO()
+    result = xmodem.recv(stream=destination, retry=max_resend)
 
     # verify
     assert result

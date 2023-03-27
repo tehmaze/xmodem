@@ -507,6 +507,8 @@ class XMODEM(object):
                                       retry)
                         self.abort()
                         return None
+                    else: # receive next character
+                        char = self.getc(1, timeout)
 
             # read sequence
             error_count = 0
