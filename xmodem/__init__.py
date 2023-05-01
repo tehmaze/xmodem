@@ -386,7 +386,7 @@ class XMODEM(object):
             _bytes.append(crc)
         return bytearray(_bytes)
 
-    def recv(self, stream, crc_mode=1, retry=16, timeout=60, delay=1, quiet=0):
+    def recv(self, stream, crc_mode=1, retry=16, timeout=60, delay=1, quiet=0, callback=None):
         '''
         Receive a stream via the XMODEM protocol.
 
@@ -411,6 +411,15 @@ class XMODEM(object):
         :type delay: int
         :param quiet: If ``True``, write transfer information to stderr.
         :type quiet: bool
+        :param callback: Reference to a callback function that has the
+                         following signature.  This is useful for
+                         getting status updates while a xmodem
+                         transfer is underway. Packet size can only be 
+                         determined once the transfer started, so it also
+                         is delivered in the callback as the fourth parameter.
+                         Expected callback signature:
+                         def callback(total_packets, success_count, error_count, packet_size)
+        :type callback: callable
 
         '''
 
@@ -467,6 +476,8 @@ class XMODEM(object):
         packet_size = 128
         sequence = 1
         cancel = 0
+        total_packets = 0
+        success_count = 0
         while True:
             while True:
                 if char == SOH:
@@ -485,6 +496,8 @@ class XMODEM(object):
                     self.putc(ACK)
                     self.log.info("Transmission complete, %d bytes",
                                   income_size)
+                    if callable(callback):
+                        callback(total_packets, success_count, error_count, packet_size)
                     return income_size
                 elif char == CAN:
                     # cancel at two consecutive cancels
@@ -543,6 +556,10 @@ class XMODEM(object):
 
                 # valid data, append chunk
                 if valid:
+                    total_packets += 1
+                    success_count += 1
+                    if callable(callback):
+                        callback(total_packets, success_count, error_count, packet_size)
                     income_size += len(data)
                     stream.write(data)
                     self.putc(ACK)
@@ -565,6 +582,7 @@ class XMODEM(object):
                 data = self.getc(1, timeout=1)
                 if data is None:
                     break
+            error_count += 1
             self.putc(NAK)
             # get next start-of-header byte
             char = self.getc(1, timeout)
