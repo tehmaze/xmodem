@@ -766,9 +766,6 @@ def runx():
     def _func(so, si):
         import select
 
-        print(('si', si))
-        print(('so', so))
-
         def getc(size, timeout=3):
             read_ready, _, _ = select.select([so], [], [], timeout)
             if read_ready:
@@ -776,7 +773,6 @@ def runx():
             else:
                 data = None
 
-            print(('getc(', repr(data), ')'))
             return data
 
         def putc(data, timeout=3):
@@ -788,7 +784,6 @@ def runx():
             else:
                 size = None
 
-            print(('putc(', repr(data), repr(size), ')'))
             return size
 
         return getc, putc
