@@ -328,6 +328,8 @@ class XMODEM(object):
                     if callable(callback):
                         callback(total_packets, success_count, error_count)
                     error_count = 0
+                    # keep track of sequence
+                    sequence = (sequence + 1) % 0x100
                     break
 
                 self.log.error('send error: expected ACK; got %r for block %d',
@@ -343,8 +345,7 @@ class XMODEM(object):
                     self.abort(timeout=timeout)
                     return False
 
-            # keep track of sequence
-            sequence = (sequence + 1) % 0x100
+
 
         while True:
             self.log.debug('sending EOT, awaiting ACK')
