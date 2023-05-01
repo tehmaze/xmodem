@@ -428,6 +428,7 @@ class XMODEM(object):
         error_count = 0
         char = 0
         cancel = 0
+        empty = 0
         while True:
             # first try CRC mode, if this fails,
             # fall back to checksum mode
@@ -468,6 +469,19 @@ class XMODEM(object):
                 else:
                     self.log.debug('cancellation at start sequence.')
                     cancel = 1
+            elif char == EOT:
+                if empty:
+                    self.log.info('transmission canceled: file empty ')
+                    self.putc(CAN)
+                    self.putc(CAN)
+                    while True:
+                        if self.getc(1, timeout=1) is None:
+                            break
+                        time.sleep(.001) # better cpu usage
+                    return 0
+                else:
+                    self.log.info('first eot received ')
+                    empty = 1
             else:
                 error_count += 1
 
@@ -521,8 +535,10 @@ class XMODEM(object):
                                       retry)
                         self.abort()
                         return None
-                    else: # receive next character
-                        char = self.getc(1, timeout)
+                    time.sleep(timeout)
+
+                # Reads next char from stream
+                char = self.getc(1, timeout=1)
 
             # read sequence
             error_count = 0
@@ -545,8 +561,7 @@ class XMODEM(object):
                 # consume data anyway ... even though we will discard it,
                 # it is not the sequence we expected!
                 self.log.error('expected sequence %d, '
-                               'got (seq1=%r, seq2=%r), '
-                               'receiving next block, will NAK.',
+                               'got (seq1=%r, seq2=%r), ',
                                sequence, seq1, seq2)
                 self.getc(packet_size + 1 + crc_mode)
             else:
@@ -565,8 +580,11 @@ class XMODEM(object):
                     stream.write(data)
                     self.putc(ACK)
                     sequence = (sequence + 1) % 0x100
-                    # get next start-of-header byte
+                    # get possible start-of-header byte
+                    # may be echoed ACK, NAK signal if so purge
                     char = self.getc(1, timeout)
+                    if char in { ACK, NAK }:
+                        char = self.getc(1, timeout)
                     continue
 
             # something went wrong, request retransmission
@@ -586,8 +604,6 @@ class XMODEM(object):
             error_count += 1
             self.putc(NAK)
             # get next start-of-header byte
-            char = self.getc(1, timeout)
-            continue
 
     def _verify_recv_checksum(self, crc_mode, data):
         if crc_mode:
