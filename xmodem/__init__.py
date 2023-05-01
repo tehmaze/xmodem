@@ -280,11 +280,11 @@ class XMODEM(object):
                     if not quiet:
                         print('received CAN', file=sys.stderr)
                     if cancel:
-                        self.log.info('Transmission canceled: received 2xCAN '
+                        self.log.info('Transmission canceled: received CAN CAN '
                                       'at start-sequence')
                         return False
                     else:
-                        self.log.debug('cancellation at start sequence.')
+                        self.log.debug('received CAN at start of sequence.')
                         cancel = 1
                 elif char == EOT:
                     self.log.info('Transmission canceled: received EOT '
@@ -467,11 +467,11 @@ class XMODEM(object):
                                   'at start-sequence')
                     return None
                 else:
-                    self.log.debug('cancellation at start sequence.')
+                    self.log.debug('recv: CAN, cancellation at start sequence')
                     cancel = 1
             elif char == EOT:
                 if empty:
-                    self.log.info('transmission canceled: file empty ')
+                    self.log.info('transmission canceled: file empty')
                     self.putc(CAN)
                     self.putc(CAN)
                     while True:
@@ -561,8 +561,10 @@ class XMODEM(object):
                 # consume data anyway ... even though we will discard it,
                 # it is not the sequence we expected!
                 self.log.error('expected sequence %d, '
-                               'got (seq1=%r, seq2=%r), ',
-                               sequence, seq1, seq2)
+                               'got (seq1=%r, seq2=%r), reading next '
+                               '%d bytes, anyway',
+                               sequence, seq1, seq2,
+                               packet_size + 1 + crc_mode)
                 self.getc(packet_size + 1 + crc_mode)
             else:
                 # sequence is ok, read packet
@@ -580,11 +582,8 @@ class XMODEM(object):
                     stream.write(data)
                     self.putc(ACK)
                     sequence = (sequence + 1) % 0x100
-                    # get possible start-of-header byte
-                    # may be echoed ACK, NAK signal if so purge
+                    # get next start-of-header byte
                     char = self.getc(1, timeout)
-                    if char in { ACK, NAK }:
-                        char = self.getc(1, timeout)
                     continue
 
             # something went wrong, request retransmission
@@ -604,6 +603,8 @@ class XMODEM(object):
             error_count += 1
             self.putc(NAK)
             # get next start-of-header byte
+            char = self.getc(1, timeout)
+            continue
 
     def _verify_recv_checksum(self, crc_mode, data):
         if crc_mode:
