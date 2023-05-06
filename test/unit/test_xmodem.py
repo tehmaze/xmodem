@@ -8,6 +8,7 @@ try:
 except ImportError:
     # python 2
     from StringIO import StringIO as BytesIO
+import time
 
 # local
 from xmodem import NAK, CRC, ACK, XMODEM, STX, SOH, EOT
@@ -118,11 +119,12 @@ def test_xmodem_send_fails_once_each_packet(mode, stream_data):
     assert result
 
 
-def test_xmodem1k_receive_fails_after_first_packet():
+def test_xmodem1k_receive_fails_after_first_packet(monkeypatch):
     """ Verify recv reaction to timeout directly after first packet """
     # given,
     max_resend = 1
-    mode='xmodem1k'
+    mode = 'xmodem1k'
+    monkeypatch.setattr(time, 'sleep', lambda t: None)
 
     def getc_generator():
         yield STX
