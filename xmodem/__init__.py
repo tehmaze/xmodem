@@ -116,6 +116,7 @@ __version__ = '0.4.5'
 
 import platform
 import logging
+import select
 import time
 import sys
 from functools import partial
@@ -136,7 +137,7 @@ class XMODEM(object):
     XMODEM Protocol handler, expects two callables which encapsulate the read
         and write operations on the underlying stream.
 
-    Example functions for reading and writing to a serial line:
+    Example functions for reading and writing to a serial line using `pyserial <http://pyserial.sourceforge.net/>`_::
 
     >>> import serial
     >>> from xmodem import XMODEM
@@ -296,7 +297,7 @@ class XMODEM(object):
 
             error_count += 1
             if error_count > retry:
-                self.log.info('send error: error_count reached %d, '
+                self.log.error('send error: error_count reached %d, '
                               'aborting.', retry)
                 self.abort(timeout=timeout)
                 return False
@@ -359,6 +360,8 @@ class XMODEM(object):
             else:
                 self.log.error('send error: expected ACK; got %r', char)
                 error_count += 1
+                if callback:
+                    callback(total_packets, success_count, error_count)
                 if error_count > retry:
                     self.log.warning('EOT was not ACKd, aborting transfer')
                     self.abort(timeout=timeout)
@@ -400,7 +403,7 @@ class XMODEM(object):
 
         :param stream: The stream object to write data to.
         :type stream: stream (file, etc.)
-        :param crc_mode: XMODEM CRC mode
+        :param crc_mode: XMODEM CRC mode, 0 is standard checksum, 1 is 16-bit checksum.
         :type crc_mode: int
         :param retry: The maximum number of times to try to resend a failed
                       packet before failing.
@@ -413,40 +416,39 @@ class XMODEM(object):
         :param quiet: If ``True``, write transfer information to stderr.
         :type quiet: bool
         :param callback: Reference to a callback function that has the
-                         following signature.  This is useful for
-                         getting status updates while a xmodem
-                         transfer is underway. Packet size can only be 
-                         determined once the transfer started, so it also
-                         is delivered in the callback as the fourth parameter.
-                         Expected callback signature:
-                         def callback(total_packets, success_count, error_count, packet_size)
-        :type callback: callable
+                         following signature::
 
+                           def callback(total_packets: int, success_count: int, error_count: int, packet_size: int)
+
+                         This is useful for tracking progress state while an xmodem transfer is
+                         underway. As packet size may be negotiated, it also included as the final
+                         argument of the callback. note that the value of error_count resets to 0
+                         after any successful block transfer.
+        :type callback: callable
         '''
 
         # initiate protocol
         error_count = 0
-        char = 0
         cancel = 0
         empty = 0
         while True:
             # first try CRC mode, if this fails,
             # fall back to checksum mode
             if error_count >= retry:
-                self.log.info('error_count reached %d, aborting.', retry)
+                self.log.error('error_count reached %d, aborting.', retry)
                 self.abort(timeout=timeout)
                 return None
             elif crc_mode and error_count < (retry // 2):
                 if not self.putc(CRC):
-                    self.log.debug('recv error: putc failed, '
-                                   'sleeping for %d', delay)
+                    self.log.warning('recv error: putc failed, '
+                                     'sleeping for %d', delay)
                     time.sleep(delay)
                     error_count += 1
             else:
                 crc_mode = 0
                 if not self.putc(NAK):
-                    self.log.debug('recv error: putc failed, '
-                                   'sleeping for %d', delay)
+                    self.log.warning('recv error: putc failed, '
+                                     'sleeping for %d', delay)
                     time.sleep(delay)
                     error_count += 1
 
@@ -474,16 +476,19 @@ class XMODEM(object):
                     self.log.info('transmission canceled: file empty')
                     self.putc(CAN)
                     self.putc(CAN)
+                    # 'purge' any remaining data on the line
                     while True:
                         if self.getc(1, timeout=1) is None:
                             break
                         time.sleep(.001) # better cpu usage
                     return 0
                 else:
-                    self.log.info('first eot received ')
+                    self.log.debug('first eot received ')
                     empty = 1
             else:
                 error_count += 1
+                if callable(callback):
+                    callback(0, 0, error_count, 128)
 
         # read data
         error_count = 0
@@ -530,6 +535,8 @@ class XMODEM(object):
                         print(err_msg, file=sys.stderr)
                     self.log.warning(err_msg)
                     error_count += 1
+                    if callable(callback):
+                        callback(total_packets, success_count, error_count, packet_size)
                     if error_count > retry:
                         self.log.info('error_count reached %d, aborting.',
                                       retry)
@@ -601,6 +608,8 @@ class XMODEM(object):
                 if data is None:
                     break
             error_count += 1
+            if callable(callback):
+                callback(total_packets, success_count, error_count, packet_size)
             self.putc(NAK)
             # get next start-of-header byte
             char = self.getc(1, timeout)
@@ -681,7 +690,7 @@ def _send(mode='xmodem', filename=None, timeout=30):
     def _getc(size, timeout=timeout):
         read_ready, _, _ = select.select([so], [], [], timeout)
         if read_ready:
-            data = stream.read(size)
+            data = si.read(size)
         else:
             data = None
         return data
@@ -703,7 +712,6 @@ def _send(mode='xmodem', filename=None, timeout=30):
 def run():
     '''Run the main entry point for sending and receiving files.'''
     import argparse
-    import serial
     import sys
 
     platform = sys.platform.lower()
@@ -714,16 +722,16 @@ def run():
         default_port = '/dev/ttyS0'
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--port', default=default_port,
-                        help='serial port')
-    parser.add_argument('-r', '--rate', default=9600, type=int,
-                        help='baud rate')
-    parser.add_argument('-b', '--bytesize', default=serial.EIGHTBITS,
-                        help='serial port transfer byte size')
-    parser.add_argument('-P', '--parity', default=serial.PARITY_NONE,
-                        help='serial port parity')
-    parser.add_argument('-S', '--stopbits', default=serial.STOPBITS_ONE,
-                        help='serial port stop bits')
+    # parser.add_argument('-p', '--port', default=default_port,
+    #                     help='serial port')
+    # parser.add_argument('-r', '--rate', default=9600, type=int,
+    #                     help='baud rate')
+    # parser.add_argument('-b', '--bytesize', default=serial.EIGHTBITS,
+    #                     help='serial port transfer byte size')
+    # parser.add_argument('-P', '--parity', default=serial.PARITY_NONE,
+    #                     help='serial port parity')
+    # parser.add_argument('-S', '--stopbits', default=serial.STOPBITS_ONE,
+    #                     help='serial port stop bits')
     parser.add_argument('-m', '--mode', default='xmodem',
                         help='XMODEM mode (xmodem, xmodem1k)')
     parser.add_argument('-t', '--timeout', default=30, type=int,
@@ -741,74 +749,8 @@ def run():
 
     if options.subcommand == 'send':
         return _send(options.mode, options.filename, options.timeout)
-    elif options.subcommand == 'recv':
-        return _recv(options.mode, options.filename, options.timeout)
-
-
-def runx():
-    import optparse
-    import subprocess
-
-    parser = optparse.OptionParser(
-        usage='%prog [<options>] <send|recv> filename filename')
-    parser.add_option('-m', '--mode', default='xmodem',
-                      help='XMODEM mode (xmodem, xmodem1k)')
-
-    options, args = parser.parse_args()
-    if len(args) != 3:
-        parser.error('invalid arguments')
-        return 1
-
-    elif args[0] not in ('send', 'recv'):
-        parser.error('invalid mode')
-        return 1
-
-    def _func(so, si):
-        import select
-
-        def getc(size, timeout=3):
-            read_ready, _, _ = select.select([so], [], [], timeout)
-            if read_ready:
-                data = so.read(size)
-            else:
-                data = None
-
-            return data
-
-        def putc(data, timeout=3):
-            _, write_ready, _ = select.select([], [si], [], timeout)
-            if write_ready:
-                si.write(data)
-                si.flush()
-                size = len(data)
-            else:
-                size = None
-
-            return size
-
-        return getc, putc
-
-    def _pipe(*command):
-        pipe = subprocess.Popen(command,
-                                stdout=subprocess.PIPE,
-                                stdin=subprocess.PIPE)
-        return pipe.stdout, pipe.stdin
-
-    if args[0] == 'recv':
-        getc, putc = _func(*_pipe('sz', '--xmodem', args[2]))
-        stream = open(args[1], 'wb')
-        xmodem = XMODEM(getc, putc, mode=options.mode)
-        status = xmodem.recv(stream, retry=8)
-        assert status, ('Transfer failed, status is', False)
-        stream.close()
-
-    elif args[0] == 'send':
-        getc, putc = _func(*_pipe('rz', '--xmodem', args[2]))
-        stream = open(args[1], 'rb')
-        xmodem = XMODEM(getc, putc, mode=options.mode)
-        sent = xmodem.send(stream, retry=8)
-        assert sent is not None, ('Transfer failed, sent is', sent)
-        stream.close()
+    # elif options.subcommand == 'recv':
+    #     return _recv(options.mode, options.filename, options.timeout)
 
 if __name__ == '__main__':
     sys.exit(run())
