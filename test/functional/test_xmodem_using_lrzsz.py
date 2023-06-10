@@ -7,6 +7,9 @@ import logging
 import tempfile
 import functools
 import subprocess
+
+import pytest
+
 try:
     # python 3
     from io import BytesIO
@@ -23,30 +26,28 @@ from .accessories import (
     verify_binary_data,
 )
 
-logging.basicConfig(format='%(levelname)-5s %(message)s',
-                    level=logging.DEBUG)
-
+MISSING_LRB_MSG = "'rb' or 'lrb' required. Try installing the 'lrzsz' package"
+MISSING_LSB_MSG = "'sb' or 'lsb' required. Try installing the 'lrzsz' package"
 
 def _proc_getc(size, timeout=1, proc=None):
-    # our getc function simply pipes to the standard out of the `rb'
-    # or `lrb' program -- any data written by such program is returned
+    # our getc function pipes to the standard out of the `rb'
+    # or `lrb' program -- any data written by 'rb' is returned
     # by our getc() callback.
     assert proc.returncode is None, ("{0} has exited: (returncode={1})"
                                      .format(proc, proc.returncode))
-    logging.debug(('get', size))
+    logging.debug('_proc_getc: read (size=%s, timeout=%s)', size, timeout)
     ready_read, _, _ = select.select([proc.stdout], [], [], timeout)
     if proc.stdout not in ready_read:
         assert False, ("Timeout on stdout of {0}.".format(proc))
     data = proc.stdout.read(size)
-    logging.debug(('got', len(data), data))
+    logging.debug('_proc_getc: read %s bytes: %r', len(data), data)
     return data
 
 
 def _proc_putc(data, timeout=1, proc=None):
-    # similarly, our putc function simply writes to the standard of
-    # our `rb' or `lrb' program -- any data written by our XMODEM
-    # protocol via putc() callback is written to the stdin of such
-    # program.
+    # similarly, the putc function pipes to standard in of the 'rb'
+    # or `lrb' program -- any data written by our XMODEM
+    # protocol via putc() callback is written to the stdin 'rb'.
     assert proc.returncode is None, ("{0} has exited: (returncode={1})"
                                      .format(proc, proc.returncode))
     _, ready_write, _ = select.select([], [proc.stdin], [], timeout)
@@ -59,15 +60,17 @@ def _proc_putc(data, timeout=1, proc=None):
 
 
 def _send_callback(total_packets, success_count, error_count):
-    # this simple callback simply asserts that no errors have occurred, and
+    # this callback asserts that no errors have occurred, and
     # prints the given status to stderr.  This is captured but displayed in
     # py.test output only on error.
     assert error_count == 0
     assert success_count == total_packets
-    print('{0}'.format(total_packets), file=sys.stderr)
+    logging.debug('_send_callback: total_packets=%s, success_count=%s, error_count=%s',
+                  total_packets, success_count, error_count)
 
 
-def test_xmodem_send():
+@pytest.mark.skipif(recv_prog is None, reason=MISSING_LRB_MSG)
+def test_xmodem_send_with_lrb():
     """ Using external program for receive, verify XMODEM.send(). """
     # Given,
     _, recv_filename = tempfile.mkstemp()
@@ -97,7 +100,8 @@ def test_xmodem_send():
             os.unlink(recv_filename)
 
 
-def test_xmodem_recv():
+@pytest.mark.skipif(send_prog is None, reason=MISSING_LSB_MSG)
+def test_xmodem_recv_with_lsb():
     """ Using external program for send, verify XMODEM.recv(). """
     # Given,
     _, send_filename = tempfile.mkstemp()
@@ -127,7 +131,8 @@ def test_xmodem_recv():
         os.unlink(send_filename)
 
 
-def test_xmodem1k_send():
+@pytest.mark.skipif(recv_prog is None, reason=MISSING_LRB_MSG)
+def test_xmodem1k_send_with_lrb():
     """ Using external program for receive, verify XMODEM1k.send(). """
     # Given,
     _, recv_filename = tempfile.mkstemp()
@@ -156,7 +161,8 @@ def test_xmodem1k_send():
         os.unlink(recv_filename)
 
 
-def test_xmodem1k_recv():
+@pytest.mark.skipif(send_prog is None, reason=MISSING_LSB_MSG)
+def test_xmodem1k_recv_with_lsb():
     """ Using external program for send, verify XMODEM1k.recv(). """
     # Given,
     _, send_filename = tempfile.mkstemp()
@@ -187,7 +193,8 @@ def test_xmodem1k_recv():
             os.unlink(send_filename)
 
 
-def test_xmodem_send_16bit_crc():
+@pytest.mark.skipif(recv_prog is None, reason=MISSING_LRB_MSG)
+def test_xmodem_send_16bit_crc_with_lrb():
     """
     Using external program for receive, verify XMODEM.send() with 16-bit CRC.
     """
@@ -219,7 +226,7 @@ def test_xmodem_send_16bit_crc():
             os.unlink(recv_filename)
 
 
-def test_xmodem_recv_oldstyle_checksum():
+def test_xmodem_recv_oldstyle_checksum_with_lrb():
     """
     Using external program for send, verify XMODEM.recv() with crc_mode 0.
     """
