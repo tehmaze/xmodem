@@ -46,18 +46,18 @@ For more information, take a look at the documentation_.
 Changes
 =======
 0.4.7:
-   * bugfix: stall on some kinds of error in recv(), `PR #56
+   * bugfix: stall on some kinds of error in ``recv()``, `PR #56
      <https://github.com/tehmaze/xmodem/pull/56>`_.
-   * bugfix: sequence number miscalculation in send(), `PR #52
+   * bugfix: sequence number miscalculation in ``send()``, `PR #52
      <https://github.com/tehmaze/xmodem/pull/52>`_.
-   * enhancement: callback function added for recv() method, `PR #53
+   * enhancement: callback function added for ``recv()``, `PR #53
      <https://github.com/tehmaze/xmodem/pull/53>`_.
-   * bugfix: receiving empty file and stall condition in recv(), `PR #50
+   * bugfix: receiving empty file and stall condition in ``recv()``, `PR #50
      <https://github.com/tehmaze/xmodem/pull/50>`_.
    * bugfix: callback is now called for some kinds of errors
      and some CLI fixes, `8a798e8b
      <https://github.com/tehmaze/xmodem/commit/8a798e8b2af2a9cd6f9e789ef154a23a6467f98b>`_.
-   * bugfix: remove DepreactionWarning for logging.warn(), `PR #49
+   * bugfix: remove DepreactionWarning for ``logging.warn()``, `PR #49
      <https://github.com/tehmaze/xmodem/pull/49>`_.
 
 0.4.6:
