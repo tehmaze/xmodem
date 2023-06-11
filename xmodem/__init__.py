@@ -257,8 +257,8 @@ class XMODEM(object):
         # initialize protocol
         try:
             packet_size = dict(
-                xmodem    = 128,
-                xmodem1k  = 1024,
+                xmodem=128,
+                xmodem1k=1024,
             )[self.mode]
         except KeyError:
             raise ValueError("Invalid mode specified: {self.mode!r}"
@@ -300,7 +300,7 @@ class XMODEM(object):
             error_count += 1
             if error_count > retry:
                 self.log.error('send error: error_count reached %d, '
-                              'aborting.', retry)
+                               'aborting.', retry)
                 self.abort(timeout=timeout)
                 return False
 
@@ -347,8 +347,6 @@ class XMODEM(object):
                                    'aborting.', error_count)
                     self.abort(timeout=timeout)
                     return False
-
-
 
         while True:
             self.log.debug('sending EOT, awaiting ACK')
@@ -482,7 +480,7 @@ class XMODEM(object):
                     while True:
                         if self.getc(1, timeout=1) is None:
                             break
-                        time.sleep(.001) # better cpu usage
+                        time.sleep(.001)  # better cpu usage
                     return 0
                 else:
                     self.log.debug('first eot received ')
@@ -631,8 +629,8 @@ class XMODEM(object):
             valid = bool(their_sum == our_sum)
             if not valid:
                 self.log.warning('recv error: checksum fail '
-                              '(theirs=%04x, ours=%04x), ',
-                              their_sum, our_sum)
+                                 '(theirs=%04x, ours=%04x), ',
+                                 their_sum, our_sum)
         else:
             _checksum = bytearray([data[-1]])
             their_sum = _checksum[0]
@@ -642,8 +640,8 @@ class XMODEM(object):
             valid = their_sum == our_sum
             if not valid:
                 self.log.warning('recv error: checksum fail '
-                              '(theirs=%02x, ours=%02x)',
-                              their_sum, our_sum)
+                                 '(theirs=%02x, ours=%02x)',
+                                 their_sum, our_sum)
         return valid, data
 
     def calc_checksum(self, data, checksum=0):
@@ -757,6 +755,7 @@ def run():
         return _send(options.mode, options.filename, options.timeout)
     # elif options.subcommand == 'recv':
     #     return _recv(options.mode, options.filename, options.timeout)
+
 
 if __name__ == '__main__':
     sys.exit(run())
