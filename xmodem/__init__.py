@@ -597,6 +597,7 @@ class XMODEM(object):
 
             # something went wrong, request retransmission
             self.log.warning('recv error: purge, requesting retransmission (NAK)')
+            n_purged = 0
             while True:
                 # When the receiver wishes to <nak>, it should call a "PURGE"
                 # subroutine, to wait for the line to clear. Recall the sender
@@ -609,6 +610,9 @@ class XMODEM(object):
                 data = self.getc(1, timeout=1)
                 if data is None:
                     break
+                n_purged = len(data)
+            if n_purged:
+                self.log.warning('%d bytes purged from receiver', n_purged)
             error_count += 1
             if callable(callback):
                 callback(total_packets, success_count, error_count, packet_size)

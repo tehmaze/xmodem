@@ -173,7 +173,9 @@ def test_xmodem_send_fails_by_garbage_start_sequence(mode, monkeypatch, caplog):
     # verify failure to send
     assert not result
     error_logged_send_error = [rec for rec in caplog.records
-                               if rec.message == "send error: expected NAK, CRC, EOT or CAN; got b'\\xde'"
+                               if rec.message in (
+                                   "send error: expected NAK, CRC, EOT or CAN; got b'\\xde'",  # py3
+                                   "send error: expected NAK, CRC, EOT or CAN; got '\\xde'")   # py2
                                and rec.levelno == logging.ERROR]
     assert len(error_logged_send_error) == retry + 1
 
@@ -242,7 +244,7 @@ def test_xmodem1k_receive_successful_when_timeout_after_first_packet(monkeypatch
         yield b'\x01'
         yield b'\xfe'
 
-        yield bytes(1024+1+1)
+        yield b'\x00' * (1024+1+1)
 
         # timeout
         yield None
@@ -252,7 +254,7 @@ def test_xmodem1k_receive_successful_when_timeout_after_first_packet(monkeypatch
         yield b'\x02'
         yield b'\xfd'
 
-        yield bytes(1024+1+1)
+        yield b'\x00' * (1024+1+1)
 
         # end of transmission
         yield EOT

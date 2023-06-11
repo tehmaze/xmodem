@@ -12,6 +12,8 @@ Documentation available at http://packages.python.org/xmodem/
 
 Python Package Index (PyPI) page is available at https://pypi.python.org/pypi/xmodem
 
+xmodem has been tested with python 2.7 through python 3.11
+
 Usage
 =====
 
