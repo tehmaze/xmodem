@@ -137,18 +137,20 @@ class XMODEM(object):
     XMODEM Protocol handler, expects two callables which encapsulate the read
         and write operations on the underlying stream.
 
-    Example functions for reading and writing to a serial line using `pyserial <http://pyserial.sourceforge.net/>`_::
+    Example functions for reading and writing to a serial line using `pyserial <http://pyserial.sourceforge.net/>`_,
 
-    >>> import serial
-    >>> from xmodem import XMODEM
-    >>> ser = serial.Serial('/dev/ttyUSB0', timeout=0) # or whatever you need
-    >>> def getc(size, timeout=1):
-    ...     return ser.read(size) or None
-    ...
-    >>> def putc(data, timeout=1):
-    ...     return ser.write(data) or None
-    ...
-    >>> modem = XMODEM(getc, putc)
+    .. code-block:: python
+
+        import serial
+        from xmodem import XMODEM
+        ser = serial.Serial('/dev/ttyUSB0', timeout=0) # or whatever you need
+        def getc(size, timeout=1):
+            return ser.read(size) or None
+
+        def putc(data, timeout=1):
+            return ser.write(data) or None
+
+        modem = XMODEM(getc, putc)
 
     :param getc: Function to retrieve bytes from a stream. The function takes
         the number of bytes to read from the stream and a timeout in seconds as
