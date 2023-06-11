@@ -90,10 +90,10 @@ def test_xmodem_fails_when_send_exceed_maximum_number_of_resend(mode):
     if mode == 'xmodem':
         assert progress_records == [
             {'error_count': 0, 'success_count': 1, 'total_packets': 1},
-            {'error_count': 1, 'success_count': 1, 'total_packets': 2},
-            {'error_count': 2, 'success_count': 1, 'total_packets': 2},
-            {'error_count': 3, 'success_count': 1, 'total_packets': 2},
-            {'error_count': 4, 'success_count': 1, 'total_packets': 2}]
+            {'error_count': 1, 'success_count': 1, 'total_packets': 1},
+            {'error_count': 2, 'success_count': 1, 'total_packets': 1},
+            {'error_count': 3, 'success_count': 1, 'total_packets': 1},
+            {'error_count': 4, 'success_count': 1, 'total_packets': 1}]
 
     elif mode == 'xmodem1k':
         assert progress_records == [
