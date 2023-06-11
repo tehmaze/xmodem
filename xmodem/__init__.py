@@ -645,8 +645,8 @@ class XMODEM(object):
         Calculate the checksum for a given block of data, can also be used to
         update a checksum.
 
-            >>> csum = modem.calc_checksum('hello')
-            >>> csum = modem.calc_checksum('world', csum)
+            >>> csum = modem.calc_checksum(b'hello')
+            >>> csum = modem.calc_checksum(b'world', csum)
             >>> hex(csum)
             '0x3c'
 
