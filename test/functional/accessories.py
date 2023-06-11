@@ -11,26 +11,10 @@ def _multi_which(prog_names):
     return None
 
 
-def _get_recv_program():
-    bin_path = _multi_which(('rb', 'lrb'))
-    assert bin_path is not None, (
-        "program required: {0!r}.  "
-        "Try installing lrzsz package.".format(bin_path))
-    return bin_path
-
-
-def _get_send_program():
-    bin_path = _multi_which(('sb', 'lsb'))
-    assert bin_path is not None, (
-        "program required: {0!r}.  "
-        "Try installing lrzsz package.".format(bin_path))
-    return bin_path
-
-recv_prog = _get_recv_program()
-send_prog = _get_send_program()
+recv_prog = _multi_which(('rb', 'lrb'))
+send_prog = _multi_which(('sb', 'lsb'))
 
 CHUNKSIZE = 521
-
 
 def fill_binary_data(stream):
     for byte in range(0x00, 0xff + 1, 10):
