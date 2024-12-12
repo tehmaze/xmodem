@@ -139,11 +139,11 @@ class DuckStream(object):
     
     """
 
-    def __init__(self, data: bytes | bytearray | None = None):
+    def __init__(self, data: bytearray | None = None):
         self.offset = 0
         self.bufByteArray = bytearray()
         if data is not None:
-            self.bufByteArray.extend(data)
+            self.bufByteArray = data
 
     def read(self, size=1) -> bytearray | bool:
         if self.index > (self.size-1):

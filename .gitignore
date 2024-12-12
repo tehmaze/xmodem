@@ -9,3 +9,4 @@
 /.cache
 /.idea
 *.py.swp
+*.bin
