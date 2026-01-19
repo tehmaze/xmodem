@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xmodem"
+version = "0.4.7"
+description = "XMODEM protocol implementation."
+readme = "README.rst"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+  { name = "Wijnand Modderman" },
+  { name = "Jeff Quast" },
+  { name = "Kris Hardy" },
+]
+keywords = ["xmodem", "protocol"]
+requires-python = ">=3.6"
+
+[project.urls]
+Homepage = "https://github.com/tehmaze/xmodem"
+Source = "https://github.com/tehmaze/xmodem"
+
+[tool.setuptools]
+packages = ["xmodem"]
+include-package-data = true
+
+[tool.setuptools.data-files]
+"doc" = [
+  "doc/XMODEM.TXT",
+  "doc/XMODEM1K.TXT",
+  "doc/XMODMCRC.TXT",
+  "doc/ymodem.txt",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+addopts = "--verbose --verbose --cov xmodem"
