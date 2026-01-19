@@ -9,3 +9,5 @@
 /.cache
 /.idea
 *.py.swp
+.venv/
+venv/
