@@ -542,47 +542,54 @@ class XMODEM(object):
                                       retry)
                         self.abort()
                         return None
-                    time.sleep(timeout)
+                    # break to purge and NAK, rather than sleeping for
+                    # the full timeout which causes problems with
+                    # embedded systems
+                    break
 
-                # Reads next char from stream
-                char = self.getc(1, timeout=1)
-
-            # read sequence
-            error_count = 0
+            # read sequence + packet + checksum in a single call
+            #
+            # Reading all expected bytes in one getc() call rather than
+            # multiple separate calls reduces timing issues when
+            # communicating with embedded systems over fast serial lines
+            # without hardware flow control. Multiple reads with separate
+            # timeouts can stack up and cause buffer overruns.
             cancel = 0
+            seq1 = None
+            seq2 = None
             self.log.debug('recv: data block %d', sequence)
-            seq1 = self.getc(1, timeout)
-            if seq1 is None:
-                self.log.warning('getc failed to get first sequence byte')
-                seq2 = None
+            data = self.getc(2 + packet_size + 1 + crc_mode, timeout)
+            if data is not None and len(data) >= 2:
+                seq1 = ord(data[0:1])
+                seq2 = 0xff - ord(data[1:2])
+                data = data[2:]
+                if len(data) != (packet_size + 1 + crc_mode):
+                    self.log.warning('recv: expected %d data bytes, got %d',
+                                     packet_size + 1 + crc_mode, len(data))
+            elif data is not None and len(data) == 1:
+                seq1 = ord(data[0:1])
+                self.log.warning('getc failed to get second sequence byte')
+                data = None
             else:
-                seq1 = ord(seq1)
-                seq2 = self.getc(1, timeout)
-                if seq2 is None:
-                    self.log.warning('getc failed to get second sequence byte')
-                else:
-                    # second byte is the same as first as 1's complement
-                    seq2 = 0xff - ord(seq2)
+                self.log.warning('getc failed to get first sequence byte')
+                data = None
 
             if not (seq1 == seq2 == sequence):
                 # consume data anyway ... even though we will discard it,
                 # it is not the sequence we expected!
                 self.log.error('expected sequence %d, '
-                               'got (seq1=%r, seq2=%r), reading next '
-                               '%d bytes, anyway',
-                               sequence, seq1, seq2,
-                               packet_size + 1 + crc_mode)
-                self.getc(packet_size + 1 + crc_mode)
-            else:
-                # sequence is ok, read packet
-                # packet_size + checksum
-                data = self.getc(packet_size + 1 + crc_mode, timeout)
+                               'got (seq1=%r, seq2=%r), '
+                               'receiving next block, will NAK.',
+                               sequence, seq1, seq2)
+            elif data is not None:
+                # sequence is ok, verify checksum
                 valid, data = self._verify_recv_checksum(crc_mode, data)
 
                 # valid data, append chunk
                 if valid:
                     total_packets += 1
                     success_count += 1
+                    error_count = 0
                     if callable(callback):
                         callback(total_packets, success_count, error_count, packet_size)
                     income_size += len(data)
