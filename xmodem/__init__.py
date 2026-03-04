@@ -119,6 +119,7 @@ import logging
 import select
 import time
 import sys
+import os
 from functools import partial
 
 # Protocol bytes
@@ -204,8 +205,10 @@ class XMODEM(object):
         0xef1f, 0xff3e, 0xcf5d, 0xdf7c, 0xaf9b, 0xbfba, 0x8fd9, 0x9ff8,
         0x6e17, 0x7e36, 0x4e55, 0x5e74, 0x2e93, 0x3eb2, 0x0ed1, 0x1ef0,
     ]
-
     def __init__(self, getc, putc, mode='xmodem', pad=b'\x1a'):
+        # 修改mode参数支持ymodem
+        assert mode in ('xmodem', 'xmodem1k', 'ymodem'), 'invalid mode'
+        self.mode = mode
         self.getc = getc
         self.putc = putc
         self.mode = mode
@@ -223,6 +226,13 @@ class XMODEM(object):
         '''
         for _ in range(count):
             self.putc(CAN, timeout)
+
+    def _send_file_info(self, filename, filesize):
+        '''YMODEM文件信息包格式: [SOH][00][FF][filename][0][filesize][0][padding][CRC]'''
+        info = bytearray(filename.encode('ascii')) + b'\x00' 
+        info += str(filesize).encode('ascii') + b'\x00'
+        info = info.ljust(128, b'\x00')  # 填充到128字节
+        return self._make_send_header(128, 0) + info + self._make_send_checksum(1, info)
 
     def send(self, stream, retry=16, timeout=60, quiet=False, callback=None):
         '''
@@ -253,17 +263,19 @@ class XMODEM(object):
                          def callback(total_packets, success_count, error_count)
         :type callback: callable
         '''
-
+    
         # initialize protocol
         try:
+            # 修改packet_size字典
             packet_size = dict(
                 xmodem=128,
                 xmodem1k=1024,
+                ymodem=1024,  # YMODEM默认使用1K块
             )[self.mode]
         except KeyError:
             raise ValueError("Invalid mode specified: {self.mode!r}"
                              .format(self=self))
-
+    
         self.log.debug('Begin start sequence, packet_size=%d', packet_size)
         error_count = 0
         crc_mode = 0
@@ -296,14 +308,39 @@ class XMODEM(object):
                 else:
                     self.log.error('send error: expected NAK, CRC, EOT or CAN; '
                                    'got %r', char)
-
+    
             error_count += 1
             if error_count > retry:
                 self.log.error('send error: error_count reached %d, '
                                'aborting.', retry)
                 self.abort(timeout=timeout)
                 return False
-
+    
+        # 如果是YMODEM模式，先发送文件信息头
+        if self.mode == 'ymodem':
+            # 获取文件名和大小
+            filename = os.path.basename(getattr(stream, 'name', 'unknown'))
+            try:
+                filesize = os.path.getsize(stream.name) if hasattr(stream, 'name') else 0
+            except:
+                filesize = 0
+            
+            # 发送文件信息包
+            file_info_packet = self._send_file_info(filename, filesize)
+            self.putc(file_info_packet)
+            
+            # 等待接收方ACK
+            char = self.getc(1, timeout)
+            if char != ACK:
+                self.log.error('YMODEM file info not ACKed')
+                return False
+            
+            # 接收方可能会再次发送CRC请求
+            char = self.getc(1, timeout)
+            if char == CRC:
+                self.log.debug('16-bit CRC requested again after file info.')
+                crc_mode = 1
+    
         # send data
         error_count = 0
         success_count = 0
@@ -316,11 +353,11 @@ class XMODEM(object):
                 self.log.debug('send: at EOF')
                 break
             total_packets += 1
-
+    
             header = self._make_send_header(packet_size, sequence)
             data = data.ljust(packet_size, self.pad)
             checksum = self._make_send_checksum(crc_mode, data)
-
+    
             # emit packet
             while True:
                 self.log.debug('send: block %d', sequence)
@@ -334,7 +371,7 @@ class XMODEM(object):
                     # keep track of sequence
                     sequence = (sequence + 1) % 0x100
                     break
-
+    
                 self.log.error('send error: expected ACK; got %r for block %d',
                                char, sequence)
                 error_count += 1
@@ -347,26 +384,51 @@ class XMODEM(object):
                                    'aborting.', error_count)
                     self.abort(timeout=timeout)
                     return False
-
+    
+        # 发送EOT表示数据传输结束
         while True:
             self.log.debug('sending EOT, awaiting ACK')
-            # end of transmission
             self.putc(EOT)
-
-            # An ACK should be returned
+            
+            # YMODEM协议中，接收方可能会先回复NAK，然后再发送一次EOT后才会收到ACK
             char = self.getc(1, timeout)
             if char == ACK:
                 break
-            else:
-                self.log.error('send error: expected ACK; got %r', char)
-                error_count += 1
-                if callback:
-                    callback(total_packets, success_count, error_count)
-                if error_count > retry:
-                    self.log.warning('EOT was not ACKd, aborting transfer')
-                    self.abort(timeout=timeout)
-                    return False
-
+            elif char == NAK and self.mode == 'ymodem':
+                # YMODEM协议特殊处理：收到NAK后再发送一次EOT
+                self.log.debug('received NAK after EOT, sending EOT again')
+                self.putc(EOT)
+                char = self.getc(1, timeout)
+                if char == ACK:
+                    break
+            
+            self.log.error('send error: expected ACK; got %r', char)
+            error_count += 1
+            if callback:
+                callback(total_packets, success_count, error_count)
+            if error_count > retry:
+                self.log.warning('EOT was not ACKd, aborting transfer')
+                self.abort(timeout=timeout)
+                return False
+    
+        # 如果是YMODEM模式，发送结束帧
+        if self.mode == 'ymodem':
+            # 等待接收方发送'C'字符请求下一个文件
+            char = self.getc(1, timeout)
+            if char != CRC:
+                self.log.error('YMODEM expected C for end packet, got %r', char)
+                return False
+                
+            # 发送空文件名包表示传输结束
+            end_packet = self._send_file_info('', 0)
+            self.putc(end_packet)
+            
+            # 等待接收方ACK
+            char = self.getc(1, timeout)
+            if char != ACK:
+                self.log.error('YMODEM end packet not ACKed')
+                return False
+    
         self.log.info('Transmission successful (ACK received).')
         return True
 
