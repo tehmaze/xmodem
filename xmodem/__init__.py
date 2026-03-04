@@ -528,6 +528,8 @@ class XMODEM(object):
                     else:
                         self.log.debug('cancellation at block %d', sequence)
                         cancel = 1
+                        char = self.getc(1, timeout)
+                        continue
                 else:
                     err_msg = ('recv error: expected SOH, EOT; '
                                'got {0!r}'.format(char))
@@ -566,6 +568,7 @@ class XMODEM(object):
                 if len(data) != (packet_size + 1 + crc_mode):
                     self.log.warning('recv: expected %d data bytes, got %d',
                                      packet_size + 1 + crc_mode, len(data))
+                    data = None
             elif data is not None and len(data) == 1:
                 seq1 = ord(data[0:1])
                 self.log.warning('getc failed to get second sequence byte')
@@ -575,8 +578,8 @@ class XMODEM(object):
                 data = None
 
             if not (seq1 == seq2 == sequence):
-                # consume data anyway ... even though we will discard it,
-                # it is not the sequence we expected!
+                # data was already consumed by the batched read above;
+                # discard it and fall through to NAK
                 self.log.error('expected sequence %d, '
                                'got (seq1=%r, seq2=%r), '
                                'receiving next block, will NAK.',

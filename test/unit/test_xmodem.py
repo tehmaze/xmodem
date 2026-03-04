@@ -545,6 +545,43 @@ def test_xmodem_recv_short_block(monkeypatch):
     assert result == 128
 
 
+def test_xmodem_recv_very_short_block_does_not_crash(monkeypatch):
+    """Verify recv() NAKs instead of crashing on a 3-byte block."""
+    monkeypatch.setattr(time, 'sleep', lambda t: None)
+
+    # 3 bytes total: correct sequence (0x01, 0xfe) + 1 data byte.
+    # After stripping the 2 sequence bytes, only 1 byte remains —
+    # far too short for _verify_recv_checksum to extract CRC bytes.
+    very_short = bytes([0x01, 0xfe, 0xaa])
+
+    def getc_generator():
+        yield SOH
+
+        # very short block — should NAK, not IndexError
+        yield very_short
+
+        # purge -> timeout
+        yield None
+
+        # retransmission: correct block
+        yield SOH
+        yield _make_block(1, 128, crc_mode=1)
+
+        yield EOT
+
+    mock = getc_generator()
+
+    def mock_getc(size, timeout=1):
+        return next(mock)
+
+    xmodem = XMODEM(getc=mock_getc, putc=dummy_putc)
+
+    destination = BytesIO()
+    result = xmodem.recv(stream=destination, retry=16)
+
+    assert result == 128
+
+
 def test_xmodem_recv_timeout_on_block_read(monkeypatch):
     """Verify recv() handles timeout during block data read."""
     monkeypatch.setattr(time, 'sleep', lambda t: None)
@@ -640,6 +677,42 @@ def test_xmodem_recv_cancel_by_can_can(monkeypatch):
 
     # verify: cancelled, returns None
     assert result is None
+
+
+def test_xmodem_recv_single_can_does_not_abort(monkeypatch):
+    """Verify recv() does not abort on a single CAN byte in the header."""
+    monkeypatch.setattr(time, 'sleep', lambda t: None)
+
+    def getc_generator():
+        # start sequence
+        yield SOH
+
+        # first block - success
+        yield _make_block(1, 128, crc_mode=1)
+
+        # single CAN (could be line noise)
+        yield CAN
+
+        # followed by valid header, NOT a second CAN
+        yield SOH
+
+        # second block
+        yield _make_block(2, 128, crc_mode=1)
+
+        # end of transmission
+        yield EOT
+
+    mock = getc_generator()
+
+    def mock_getc(size, timeout=1):
+        return next(mock)
+
+    xmodem = XMODEM(getc=mock_getc, putc=dummy_putc)
+
+    destination = BytesIO()
+    result = xmodem.recv(stream=destination, retry=16)
+
+    assert result == 256
 
 
 def test_xmodem_recv_exceeds_retry_limit(monkeypatch):
