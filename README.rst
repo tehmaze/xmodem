@@ -47,6 +47,14 @@ For more information, take a look at the documentation_.
 
 Changes
 =======
+0.5.0
+   * bugfix: retry_limit was never actually triggered during the data
+     transfer phase because errors never accumulated, and
+   * enhancement: replace 3x ``getc()`` calls with a single
+     ``recv()`` call, reducing timing and failed packets when using
+     fast serial lines without flow control. `PR #61
+     <https://github.com/tehmaze/xmodem/pull/61>`_.
+
 0.4.7:
    * bugfix: stall on some kinds of error in ``recv()``, `PR #56
      <https://github.com/tehmaze/xmodem/pull/56>`_.
